@@ -1,9 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Brain, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Brain, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, LogOut } from 'lucide-react';
 import { CognitiveChat } from './components/CognitiveChat';
 import { AIChat } from './components/AIChat';
 import { Dashboard } from './components/Dashboard';
 import { GameStats } from './types/game';
+import { User } from './types/auth';
+import { authService } from './services/authService';
+import { Login } from './components/Login';
+import { Register } from './components/Register';
+import { saveGameHistoryToLocalStorage } from './utils/localStorage';
+import { saveGameSession } from './utils/gameHistory';
+import { saveGameStats, updateMaxLevels } from './utils/statsHistory';
+import { csvManager } from './utils/csvManager'; // Import csvManager
 
 type Position = {
   x: number;
@@ -13,9 +22,42 @@ type Position = {
 type Problem = {
   question: string;
   answer: number;
+  type: 'addition' | 'subtraction' | 'multiplication' | 'division' | 'power' | 'algebraic';
+};
+
+const DEFAULT_GAME_STATS = {
+  level: 1,
+  score: 0,
+  correctAnswers: 0,
+  totalAttempts: 0,
+  averageResponseTime: 0,
+  problemTypes: {
+    addition: { correct: 0, total: 0 },
+    subtraction: { correct: 0, total: 0 },
+    multiplication: { correct: 0, total: 0 },
+    division: { correct: 0, total: 0 },
+    power: { correct: 0, total: 0 },
+    algebraic: { correct: 0, total: 0 }
+  }
+};
+
+const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const isAuthenticated = authService.isAuthenticated();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
 };
 
 function App() {
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [gameStats, setGameStats] = useState<GameStats>(DEFAULT_GAME_STATS);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [playerPos, setPlayerPos] = useState<Position>({ x: 0, y: 0 });
   const [targetPos, setTargetPos] = useState<Position>({ x: 2, y: 2 });
   const [gauge, setGauge] = useState<number>(0);
@@ -30,7 +72,6 @@ function App() {
   const [totalResponseTime, setTotalResponseTime] = useState<number>(0);
   const [correctAnswers, setCorrectAnswers] = useState<number>(0);
   const [totalAttempts, setTotalAttempts] = useState<number>(0);
-  const [showDashboard, setShowDashboard] = useState(false);
   const [problemTypes, setProblemTypes] = useState<Record<string, { correct: number; total: number }>>({
     addition: { correct: 0, total: 0 },
     subtraction: { correct: 0, total: 0 },
@@ -39,6 +80,37 @@ function App() {
     power: { correct: 0, total: 0 },
     algebraic: { correct: 0, total: 0 }
   });
+
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+      setShowLogin(false);
+      setShowRegister(false);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    const currentUser = authService.getCurrentUser();
+    setUser(currentUser);
+    setShowLogin(false);
+    setShowRegister(false);
+  };
+
+  const handleRegister = () => {
+    const currentUser = authService.getCurrentUser();
+    setUser(currentUser);
+    setShowLogin(false);
+    setShowRegister(false);
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setUser(null);
+    setShowLogin(true);
+    setShowRegister(false);
+    setShowDashboard(false);
+  };
 
   const generateNewTarget = useCallback(() => {
     let newX, newY;
@@ -71,7 +143,7 @@ function App() {
     
     let num1 = Math.floor(Math.random() * range) + 1;
     let num2 = Math.floor(Math.random() * range) + 1;
-    let problemType = '';
+    let problemType: Problem['type'] = 'addition';
 
     switch (operation) {
       case '-':
@@ -145,45 +217,94 @@ function App() {
     return { question, answer, type: problemType };
   }, [level]);
 
+  const handleGameOver = useCallback(async () => {
+    setGameOver(true);
+    const finalStats: GameStats = {
+      level,
+      score,
+      correctAnswers,
+      totalAttempts,
+      averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
+      problemTypes
+    };
+
+    // Sauvegarder les statistiques finales
+    saveGameStats(finalStats);
+    saveGameHistoryToLocalStorage(finalStats);
+    
+    try {
+      await saveGameSession(finalStats);
+    } catch (error) {
+      console.error('Failed to save game session to file:', error);
+    }
+  }, [level, score, correctAnswers, totalAttempts, totalResponseTime, problemTypes]);
+
+  const getGaugeSpeed = useCallback(() => {
+    const baseSpeed = 150;
+    
+    if (level === 8) {
+      return 300;
+    }
+    
+    const speedReduction = Math.min(100, level * 5);
+    const speed = Math.max(50, baseSpeed - speedReduction);
+    
+    if (level === 7) return speed * 1.5;
+    if (level === 9) return speed * 0.75;
+    
+    return speed;
+  }, [level]);
+
   useEffect(() => {
     if (!currentProblem) {
       const newProblem = generateProblem();
       setCurrentProblem(newProblem);
     }
+  }, [currentProblem, generateProblem]);
 
-    const getGaugeSpeed = () => {
-      const baseSpeed = 150;
-      
-      // Significantly slow down the game at level 8
-      if (level === 8) {
-        return 300; // Double the base speed (slower)
-      }
-      
-      // For other levels, use a modified progression
-      const speedReduction = Math.min(100, level * 5);
-      const speed = Math.max(50, baseSpeed - speedReduction);
-      
-      // Additional slowdown for levels 7-9 to create a smoother transition
-      if (level === 7) return speed * 1.5;
-      if (level === 9) return speed * 0.75;
-      
-      return speed;
-    };
-
-    const gaugeInterval = setInterval(() => {
-      if (!gameOver) {
+  useEffect(() => {
+    if (!gameOver) {
+      const gaugeInterval = setInterval(() => {
         setGauge(prev => {
-          if (prev >= 100) {
-            setGameOver(true);
+          const newValue = prev + 1;
+          if (newValue >= 100) {
+            clearInterval(gaugeInterval);
+            handleGameOver();
             return 100;
           }
-          return prev + 1;
+          return newValue;
         });
-      }
-    }, getGaugeSpeed());
+      }, getGaugeSpeed());
 
-    return () => clearInterval(gaugeInterval);
-  }, [gameOver, currentProblem, generateProblem, level]);
+      return () => clearInterval(gaugeInterval);
+    }
+  }, [gameOver, getGaugeSpeed]);
+
+  useEffect(() => {
+    if (gameOver && user) {
+      const finalStats: GameStats = {
+        level,
+        score,
+        correctAnswers,
+        totalAttempts,
+        averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
+        problemTypes
+      };
+      
+      setGameStats(finalStats);
+      // Sauvegarder dans le CSV des parties
+      csvManager.addGameRecord(user.id, finalStats);
+    }
+  }, [gameOver, user, level, score, correctAnswers, totalAttempts, totalResponseTime, problemTypes]);
+
+  const currentGameStats: GameStats = useMemo(() => ({
+    level,
+    score,
+    correctAnswers,
+    totalAttempts,
+    averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
+    problemTypes
+  }), [level, score, correctAnswers, totalAttempts, totalResponseTime, problemTypes]);
 
   const handleMove = (direction: 'up' | 'down' | 'left' | 'right') => {
     if (gameOver) return;
@@ -204,16 +325,31 @@ function App() {
 
     if (newPos.x === targetPos.x && newPos.y === targetPos.y) {
       const newLevel = level + 1;
+      const newScore = score + 20;
+      
       setLevel(newLevel);
       setGauge(0);
+      setScore(newScore);
+      setMessage(`Target reached! Level ${newLevel} 🎯`);
       
       if (newLevel % 4 === 0 && gridSize < 8) {
         setGridSize(prev => prev + 1);
       }
       
-      setScore(prev => prev + 20);
-      setMessage(`Target reached! Level ${newLevel} 🎯`);
       generateNewTarget();
+      
+      // Sauvegarder les statistiques après avoir atteint la cible
+      const currentStats: GameStats = {
+        level: newLevel,
+        score: newScore,
+        correctAnswers,
+        totalAttempts,
+        averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
+        problemTypes
+      };
+      
+      saveGameStats(currentStats);
+      updateMaxLevels(newLevel);
     }
   };
 
@@ -222,24 +358,36 @@ function App() {
     if (!currentProblem) return;
 
     const responseTime = Date.now() - startTime;
-    setTotalResponseTime(prev => prev + responseTime);
-    setTotalAttempts(prev => prev + 1);
+    const newTotalResponseTime = totalResponseTime + responseTime;
+    const newTotalAttempts = totalAttempts + 1;
+    
+    setTotalResponseTime(newTotalResponseTime);
+    setTotalAttempts(newTotalAttempts);
 
     const numAnswer = parseInt(userAnswer);
-    if (numAnswer === currentProblem.answer) {
-      setScore(prev => prev + 10);
+    const isCorrect = numAnswer === currentProblem.answer;
+
+    // Mettre à jour les statistiques
+    const newProblemTypes = {
+      ...problemTypes,
+      [currentProblem.type]: {
+        ...problemTypes[currentProblem.type],
+        total: problemTypes[currentProblem.type].total + 1,
+        correct: isCorrect ? problemTypes[currentProblem.type].correct + 1 : problemTypes[currentProblem.type].correct
+      }
+    };
+
+    setProblemTypes(newProblemTypes);
+
+    const newCorrectAnswers = isCorrect ? correctAnswers + 1 : correctAnswers;
+    const newScore = isCorrect ? score + 10 : score;
+
+    if (isCorrect) {
+      setScore(newScore);
       setGauge(prev => Math.max(0, prev - 20));
       setMessage('Correct! 🎉');
-      setCorrectAnswers(prev => prev + 1);
+      setCorrectAnswers(newCorrectAnswers);
       
-      setProblemTypes(prev => ({
-        ...prev,
-        [currentProblem.type]: {
-          ...prev[currentProblem.type],
-          correct: prev[currentProblem.type].correct + 1
-        }
-      }));
-
       const newProblem = generateProblem();
       setCurrentProblem(newProblem);
       setUserAnswer('');
@@ -247,6 +395,18 @@ function App() {
       setGauge(prev => prev + 10);
       setMessage('Wrong answer! Try again ❌');
     }
+
+    // Sauvegarder les statistiques après chaque réponse
+    const currentStats: GameStats = {
+      level,
+      score: newScore,
+      correctAnswers: newCorrectAnswers,
+      totalAttempts: newTotalAttempts,
+      averageResponseTime: newTotalResponseTime / newTotalAttempts,
+      problemTypes: newProblemTypes
+    };
+
+    saveGameStats(currentStats);
   };
 
   const restartGame = () => {
@@ -273,147 +433,181 @@ function App() {
     });
   };
 
-  const gameStats: GameStats = {
-    level,
-    score,
-    correctAnswers,
-    totalAttempts,
-    averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
-    problemTypes
+  const navigate = useNavigate();
+
+  const handleGameEnd = (stats: GameStats) => {
+    setGameStats(stats);
+    navigate('/dashboard');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
-      {showDashboard ? (
-        <Dashboard gameStats={gameStats} />
-      ) : (
-        <div className="bg-white p-8 rounded-xl shadow-2xl max-w-2xl w-full">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Brain className="w-8 h-8 text-purple-600" />
-              <h1 className="text-3xl font-bold text-gray-800">Math Runner</h1>
-            </div>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowDashboard(true)}
-                className="bg-purple-100 text-purple-600 px-4 py-2 rounded-lg hover:bg-purple-200 transition"
-              >
-                View Stats
-              </button>
-              <div className="text-xl font-semibold text-purple-600">
-                Level: {level}
-              </div>
-              <div className="text-xl font-semibold text-purple-600">
-                Score: {score}
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <div className="w-full bg-gray-200 rounded-full h-4">
-              <div 
-                className="h-full bg-red-500 rounded-full transition-all duration-300"
-                style={{ width: `${gauge}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {gameOver ? (
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">Game Over!</h2>
-              <p className="text-xl mb-4">Final Score: {score}</p>
-              <p className="text-lg mb-4">Level Reached: {level}</p>
-              <button
-                onClick={restartGame}
-                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
-              >
-                Play Again
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className={`grid gap-1 mb-6 bg-gray-100 p-2 rounded-lg mx-auto`} 
-                   style={{ 
-                     gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-                     width: 'fit-content'
-                   }}>
-                {Array.from({ length: gridSize * gridSize }).map((_, index) => {
-                  const x = index % gridSize;
-                  const y = Math.floor(index / gridSize);
-                  const isPlayer = x === playerPos.x && y === playerPos.y;
-                  const isTarget = x === targetPos.x && y === targetPos.y;
-
-                  return (
-                    <div
-                      key={index}
-                      className={`w-16 h-16 rounded flex items-center justify-center ${
-                        isPlayer ? 'bg-purple-600' : 
-                        isTarget ? 'bg-red-500' : 
-                        'bg-gray-200'
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-
-              <div className="mb-6">
-                <div className="text-center mb-4">
-                  <h3 className="text-xl font-bold">{currentProblem?.question}</h3>
-                  {message && (
-                    <p className={message.includes('Wrong') ? 'text-red-600' : 'text-green-600'}>
-                      {message}
-                    </p>
-                  )}
+    <div className="min-h-screen bg-gray-100">
+      <Routes>
+        <Route path="/login" element={<Login onLogin={handleLogin} onRegisterClick={() => {
+          setShowLogin(false);
+          setShowRegister(true);
+        }} />} />
+        <Route path="/register" element={<Register onRegister={handleRegister} onLoginClick={() => {
+          setShowRegister(false);
+          setShowLogin(true);
+        }} />} />
+        <Route
+          path="/game"
+          element={
+            <PrivateRoute>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center py-4">
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {user ? `Bienvenue, ${user.username}` : 'MathRunner'}
+                  </h1>
+                  <div className="flex items-center gap-4">
+                    {user && (
+                      <>
+                        <button
+                          onClick={() => setShowDashboard(true)}
+                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          Statistiques
+                        </button>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          <LogOut size={20} />
+                          Déconnexion
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <form onSubmit={handleAnswer} className="flex gap-2">
-                  <input
-                    type="number"
-                    value={userAnswer}
-                    onChange={(e) => setUserAnswer(e.target.value)}
-                    className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2"
-                    placeholder="Enter your answer"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
-                  >
-                    Submit
-                  </button>
-                </form>
-              </div>
 
-              <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
-                <button
-                  onClick={() => handleMove('up')}
-                  className="col-start-2 bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
-                >
-                  <ArrowUp className="w-6 h-6 mx-auto" />
-                </button>
-                <button
-                  onClick={() => handleMove('left')}
-                  className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
-                >
-                  <ArrowLeft className="w-6 h-6 mx-auto" />
-                </button>
-                <button
-                  onClick={() => handleMove('down')}
-                  className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
-                >
-                  <ArrowDown className="w-6 h-6 mx-auto" />
-                </button>
-                <button
-                  onClick={() => handleMove('right')}
-                  className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
-                >
-                  <ArrowRight className="w-6 h-6 mx-auto" />
-                </button>
+                {showDashboard ? (
+                  <Dashboard
+                    gameStats={currentGameStats}
+                    onReturn={() => setShowDashboard(false)}
+                  />
+                ) : (
+                  <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
+                    {gameOver ? (
+                      <div className="text-center">
+                        <h2 className="text-2xl font-bold text-red-600 mb-4">Game Over!</h2>
+                        <p className="text-xl mb-4">Final Score: {score}</p>
+                        <p className="text-lg mb-4">Level Reached: {level}</p>
+                        <button
+                          onClick={restartGame}
+                          className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
+                        >
+                          Play Again
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className={`grid gap-1 mb-6 bg-gray-100 p-2 rounded-lg mx-auto`} 
+                             style={{ 
+                               gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                               width: 'fit-content'
+                             }}>
+                          {Array.from({ length: gridSize * gridSize }).map((_, index) => {
+                            const x = index % gridSize;
+                            const y = Math.floor(index / gridSize);
+                            const isPlayer = x === playerPos.x && y === playerPos.y;
+                            const isTarget = x === targetPos.x && y === targetPos.y;
+
+                            return (
+                              <div
+                                key={index}
+                                className={`w-16 h-16 rounded flex items-center justify-center ${
+                                  isPlayer ? 'bg-purple-600' : 
+                                  isTarget ? 'bg-red-500' : 
+                                  'bg-gray-200'
+                                }`}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        <div className="mb-6">
+                          <div className="text-center mb-4">
+                            <h3 className="text-xl font-bold">{currentProblem?.question}</h3>
+                            {message && (
+                              <p className={message.includes('Wrong') ? 'text-red-600' : 'text-green-600'}>
+                                {message}
+                              </p>
+                            )}
+                          </div>
+                          <form onSubmit={handleAnswer} className="flex gap-2">
+                            <input
+                              type="number"
+                              value={userAnswer}
+                              onChange={(e) => setUserAnswer(e.target.value)}
+                              className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2"
+                              placeholder="Enter your answer"
+                            />
+                            <button
+                              type="submit"
+                              className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
+                            >
+                              Submit
+                            </button>
+                          </form>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
+                          <button
+                            onClick={() => handleMove('up')}
+                            className="col-start-2 bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
+                          >
+                            <ArrowUp className="w-6 h-6 mx-auto" />
+                          </button>
+                          <button
+                            onClick={() => handleMove('left')}
+                            className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
+                          >
+                            <ArrowLeft className="w-6 h-6 mx-auto" />
+                          </button>
+                          <button
+                            onClick={() => handleMove('down')}
+                            className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
+                          >
+                            <ArrowDown className="w-6 h-6 mx-auto" />
+                          </button>
+                          <button
+                            onClick={() => handleMove('right')}
+                            className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
+                          >
+                            <ArrowRight className="w-6 h-6 mx-auto" />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                    <CognitiveChat gameStats={currentGameStats} />
+                    <AIChat gameStats={currentGameStats} />
+                  </div>
+                )}
               </div>
-            </>
-          )}
-        </div>
-      )}
-      <CognitiveChat gameStats={gameStats} />
-      <AIChat gameStats={gameStats} />
+            </PrivateRoute>
+          }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/"
+            element={
+              authService.isAuthenticated() ? (
+                <Navigate to="/game" replace />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+        </Routes>
+      </div>
     </div>
   );
 }
