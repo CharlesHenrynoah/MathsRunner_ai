@@ -1,29 +1,31 @@
+export type ProblemType = 'addition' | 'subtraction' | 'multiplication' | 'division' | 'puissance' | 'algebre';
+
 export interface ProblemTypeStats {
   correct: number;
   total: number;
 }
 
 export interface GameStats {
+  score: number;
   level: number;
-  score: number; // Score de la partie en cours
-  totalAttempts: number;
   correctAnswers: number;
+  totalAttempts: number;
   averageResponseTime: number;
-  problemTypes: Record<string, ProblemTypeStats>;
-  progression?: {
-    level: number;
-    accuracy: number;
-    responseTime: number;
-    score: number;
+  problemTypes: {
+    [key in ProblemType]?: {
+      correct: number;
+      total: number;
+    };
   };
+  timestamp?: string;
 }
 
 export interface PeriodStats {
   maxLevel: number;
   accuracy: number;
   avgResponseTime: number;
-  totalScore: number; // Somme des scores de toutes les parties
-  maxTotalScore: number; // Score maximum atteint dans une seule partie
+  totalScore: number; 
+  maxTotalScore: number; 
   problemTypes: Record<string, ProblemTypeStats>;
   progression: {
     maxLevel: number;

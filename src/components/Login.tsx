@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { LoginCredentials } from '../types/auth';
 import { authService } from '../services/authService';
 
 interface LoginProps {
@@ -7,9 +6,14 @@ interface LoginProps {
   onRegisterClick: () => void;
 }
 
+interface LoginForm {
+  email: string;
+  password: string;
+}
+
 export const Login: React.FC<LoginProps> = ({ onLogin, onRegisterClick }) => {
-  const [credentials, setCredentials] = useState<LoginCredentials>({
-    identifier: '',
+  const [form, setForm] = useState<LoginForm>({
+    email: '',
     password: ''
   });
   const [error, setError] = useState<string>('');
@@ -19,7 +23,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onRegisterClick }) => {
     setError('');
 
     try {
-      await authService.login(credentials);
+      await authService.login(form.email, form.password);
       onLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
@@ -27,7 +31,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onRegisterClick }) => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCredentials(prev => ({
+    setForm(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
@@ -51,16 +55,16 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onRegisterClick }) => {
             )}
 
             <div>
-              <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
-                Email ou Pseudo
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email
               </label>
               <div className="mt-1">
                 <input
-                  id="identifier"
-                  name="identifier"
-                  type="text"
+                  id="email"
+                  name="email"
+                  type="email"
                   required
-                  value={credentials.identifier}
+                  value={form.email}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                 />
@@ -77,7 +81,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, onRegisterClick }) => {
                   name="password"
                   type="password"
                   required
-                  value={credentials.password}
+                  value={form.password}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                 />

@@ -1,148 +1,156 @@
 import React, { useEffect, useState } from 'react';
-import { GameStats } from '../types/game';
+import { GameStats, ProblemType } from '../types/game';
+import { userStatsService } from '../services/userStatsService';
 import { authService } from '../services/authService';
-import { csvManager } from '../utils/csvManager';
-import { ArrowLeft, Download } from 'lucide-react';
+import { Brain, Trophy, BarChart2 } from 'lucide-react';
 
 interface DashboardProps {
   gameStats: GameStats;
-  onReturn: () => void;
+  onReturnToGame: () => void;
 }
 
-interface GameHistoryItem {
-  gameId: string;
-  timestamp: string;
-  level: number;
-  score: number;
-  correctAnswers: number;
-  totalAttempts: number;
+interface GlobalStats {
+  bestScore: number;
+  averageScore: number;
+  totalGames: number;
   averageResponseTime: number;
+  problemTypeStats: Record<ProblemType, { correct: number; total: number }>;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ gameStats, onReturn }) => {
-  const [gameHistory, setGameHistory] = useState<GameHistoryItem[]>([]);
-  const user = authService.getCurrentUser();
+export const Dashboard: React.FC<DashboardProps> = ({ gameStats, onReturnToGame }) => {
+  const [globalStats, setGlobalStats] = useState<GlobalStats>({
+    bestScore: 0,
+    averageScore: 0,
+    totalGames: 0,
+    averageResponseTime: 0,
+    problemTypeStats: {} as Record<ProblemType, { correct: number; total: number }>,
+  });
+  const currentUser = authService.getCurrentUser();
+  const pseudo = currentUser ? currentUser.pseudo : 'Joueur';
 
   useEffect(() => {
-    const loadGameHistory = () => {
-      if (user?.id) {
-        const userGames = csvManager.getUserGames(user.id);
-        setGameHistory(userGames.map(game => ({
-          gameId: game.gameId,
-          timestamp: game.timestamp,
-          level: game.level,
-          score: game.score,
-          correctAnswers: game.correctAnswers,
-          totalAttempts: game.totalAttempts,
-          averageResponseTime: game.averageResponseTime
-        })));
+    const loadStats = async () => {
+      try {
+        const stats = await userStatsService.getGlobalStats();
+        setGlobalStats(stats);
+      } catch (error) {
+        console.error('Erreur lors du chargement des stats:', error);
       }
     };
+    loadStats();
+  }, []);
 
-    loadGameHistory();
-  }, [user?.id]);
-
-  const handleExportData = () => {
-    if (!user) return;
-
-    const csvData = csvManager.exportUserData(user.id);
-    const blob = new Blob([csvData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `mathrunner_stats_${user.username}_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+  const formatPercentage = (correct: number, total: number) => {
+    if (total === 0) return '0%';
+    return ((correct / total) * 100).toFixed(1) + '%';
   };
 
   return (
-    <div className="bg-white p-8 rounded-xl shadow-lg max-w-4xl w-full mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <button
-          onClick={onReturn}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Retour au jeu
-        </button>
-        <button
-          onClick={handleExportData}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Download className="w-5 h-5" />
-          Exporter mes données
-        </button>
-      </div>
-
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Statistiques actuelles</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard
-            title="Niveau atteint"
-            value={gameStats.level}
-          />
-          <StatCard
-            title="Score"
-            value={gameStats.score}
-          />
-          <StatCard
-            title="Précision"
-            value={`${Math.round((gameStats.correctAnswers / gameStats.totalAttempts) * 100 || 0)}%`}
-          />
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">Tableau de bord</h1>
+          <button
+            onClick={onReturnToGame}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            Retour au jeu
+          </button>
         </div>
-      </div>
 
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Historique des parties</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Niveau</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Précision</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temps moyen</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {gameHistory.map((game) => (
-                <tr key={game.gameId}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(game.timestamp).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {game.level}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {game.score}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {Math.round((game.correctAnswers / game.totalAttempts) * 100)}%
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {game.averageResponseTime.toFixed(2)}s
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Message de bienvenue */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md p-6 mb-6">
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Salut {pseudo} ! 👋
+          </h1>
+          <p className="text-gray-200">
+            Voici tes statistiques de jeu
+          </p>
+        </div>
+
+        {/* Dernière partie */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl shadow-xl p-6 mb-8">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
+            <Trophy className="w-6 h-6 text-yellow-500" />
+            Dernière partie
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-600">Score</p>
+              <p className="text-2xl font-bold">{gameStats.score}</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="text-sm text-green-600">Niveau atteint</p>
+              <p className="text-2xl font-bold">{gameStats.level}</p>
+            </div>
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="text-sm text-yellow-600">Réponses correctes</p>
+              <p className="text-2xl font-bold">{gameStats.correctAnswers}</p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="text-sm text-purple-600">Temps moyen de réponse</p>
+              <p className="text-2xl font-bold">{Math.round(gameStats.averageResponseTime / 1000)}s</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistiques globales */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl shadow-xl p-6 mb-8">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
+            <BarChart2 className="w-6 h-6 text-blue-500" />
+            Statistiques globales
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-600">Meilleur score</p>
+              <p className="text-2xl font-bold">{globalStats.bestScore}</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="text-sm text-green-600">Score moyen</p>
+              <p className="text-2xl font-bold">{Math.round(globalStats.averageScore)}</p>
+            </div>
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="text-sm text-yellow-600">Parties jouées</p>
+              <p className="text-2xl font-bold">{globalStats.totalGames}</p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="text-sm text-purple-600">Temps moyen de réponse</p>
+              <p className="text-2xl font-bold">{Math.round(globalStats.averageResponseTime / 1000)}s</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Performance par type */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl shadow-xl p-6">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-white">
+            <Brain className="w-6 h-6 text-green-500" />
+            Performance par type
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(globalStats.problemTypeStats).map(([type, stats]) => (
+              <div key={type} className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-800 capitalize mb-2">{type}</h3>
+                <div className="flex flex-col space-y-2">
+                  <p className="text-gray-600">
+                    {formatPercentage(stats.correct, stats.total)}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {stats.correct} / {stats.total} {stats.total === 1 ? 'réponse correcte' : 'réponses correctes'}
+                  </p>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 rounded-full h-2"
+                      style={{
+                        width: `${stats.total > 0 ? (stats.correct / stats.total) * 100 : 0}%`
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
-interface StatCardProps {
-  title: string;
-  value: number | string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ title, value }) => (
-  <div className="bg-gray-50 p-6 rounded-lg">
-    <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-    <p className="mt-2 text-3xl font-semibold text-gray-900">{value}</p>
-  </div>
-);

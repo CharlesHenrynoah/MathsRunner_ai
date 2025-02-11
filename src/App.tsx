@@ -1,33 +1,29 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Brain, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
+import { Brain, Bot, X, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { CognitiveChat } from './components/CognitiveChat';
 import { AIChat } from './components/AIChat';
-import { Dashboard } from './components/Dashboard';
-import { GameStats } from './types/game';
-import { User } from './types/auth';
-import { authService } from './services/authService';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
-import { saveGameHistoryToLocalStorage } from './utils/localStorage';
-import { saveGameSession } from './utils/gameHistory';
-import { saveGameStats, updateMaxLevels } from './utils/statsHistory';
-import { csvManager } from './utils/csvManager'; // Import csvManager
+import { Dashboard } from './components/Dashboard';
+import { GameStats, ProblemType } from './types/game';
+import { authService } from './services/authService';
+import { userStatsService } from './services/userStatsService';
 
-type Position = {
+interface Position {
   x: number;
   y: number;
-};
+}
 
-type Problem = {
+interface Problem {
   question: string;
   answer: number;
-  type: 'addition' | 'subtraction' | 'multiplication' | 'division' | 'power' | 'algebraic';
-};
+  type: ProblemType;
+}
 
-const DEFAULT_GAME_STATS = {
-  level: 1,
+const DEFAULT_GAME_STATS: GameStats = {
   score: 0,
+  level: 1,
   correctAnswers: 0,
   totalAttempts: 0,
   averageResponseTime: 0,
@@ -36,579 +32,636 @@ const DEFAULT_GAME_STATS = {
     subtraction: { correct: 0, total: 0 },
     multiplication: { correct: 0, total: 0 },
     division: { correct: 0, total: 0 },
-    power: { correct: 0, total: 0 },
-    algebraic: { correct: 0, total: 0 }
+    puissance: { correct: 0, total: 0 },
+    algebre: { correct: 0, total: 0 }
   }
 };
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isAuthenticated = authService.isAuthenticated();
-  const location = useLocation();
+const generateProblem = (level: number): Problem => {
+  let type: ProblemType;
+  let num1: number, num2: number, num3: number, answer: number, question: string;
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  switch (level) {
+    case 1:
+      // Niveau 1: Addition et soustraction simples (nombres jusqu'à 10)
+      type = Math.random() < 0.5 ? 'addition' : 'subtraction';
+      if (type === 'addition') {
+        num1 = Math.floor(Math.random() * 10) + 1;
+        num2 = Math.floor(Math.random() * 10) + 1;
+        answer = num1 + num2;
+        question = `${num1} + ${num2} = ?`;
+      } else {
+        num1 = Math.floor(Math.random() * 10) + 1;
+        num2 = Math.floor(Math.random() * num1) + 1;
+        answer = num1 - num2;
+        question = `${num1} - ${num2} = ?`;
+      }
+      break;
+
+    case 2:
+      // Niveau 2: Addition et soustraction plus complexes (nombres jusqu'à 20)
+      type = Math.random() < 0.5 ? 'addition' : 'subtraction';
+      if (type === 'addition') {
+        num1 = Math.floor(Math.random() * 20) + 10;
+        num2 = Math.floor(Math.random() * 20) + 1;
+        answer = num1 + num2;
+        question = `${num1} + ${num2} = ?`;
+      } else {
+        num1 = Math.floor(Math.random() * 20) + 10;
+        num2 = Math.floor(Math.random() * num1) + 1;
+        answer = num1 - num2;
+        question = `${num1} - ${num2} = ?`;
+      }
+      break;
+
+    case 3:
+      // Niveau 3: Multiplication et division simples
+      type = Math.random() < 0.5 ? 'multiplication' : 'division';
+      if (type === 'multiplication') {
+        num1 = Math.floor(Math.random() * 5) + 1;
+        num2 = Math.floor(Math.random() * 5) + 1;
+        answer = num1 * num2;
+        question = `${num1} × ${num2} = ?`;
+      } else {
+        num2 = Math.floor(Math.random() * 5) + 1; // diviseur
+        answer = Math.floor(Math.random() * 5) + 1; // quotient
+        num1 = num2 * answer; // dividende
+        question = `${num1} ÷ ${num2} = ?`;
+      }
+      break;
+
+    case 4:
+      // Niveau 4: Multiplication et division plus complexes
+      type = Math.random() < 0.5 ? 'multiplication' : 'division';
+      if (type === 'multiplication') {
+        num1 = Math.floor(Math.random() * 7) + 4;
+        num2 = Math.floor(Math.random() * 7) + 4;
+        answer = num1 * num2;
+        question = `${num1} × ${num2} = ?`;
+      } else {
+        num2 = Math.floor(Math.random() * 7) + 4; // diviseur
+        answer = Math.floor(Math.random() * 7) + 4; // quotient
+        num1 = num2 * answer; // dividende
+        question = `${num1} ÷ ${num2} = ?`;
+      }
+      break;
+
+    case 5:
+      // Niveau 5: Mélange d'opérations sur une ligne
+      const operations = ['addition', 'multiplication', 'subtraction'];
+      type = operations[Math.floor(Math.random() * operations.length)] as ProblemType;
+      
+      num1 = Math.floor(Math.random() * 10) + 1;
+      num2 = Math.floor(Math.random() * 10) + 1;
+      num3 = Math.floor(Math.random() * 10) + 1;
+      
+      if (type === 'addition') {
+        answer = num1 + num2 + num3;
+        question = `${num1} + ${num2} + ${num3} = ?`;
+      } else if (type === 'multiplication') {
+        answer = num1 * num2;
+        question = `${num1} × ${num2} + ${num3} = ?`;
+        answer += num3;
+      } else {
+        answer = num1 - num2 + num3;
+        question = `${num1} - ${num2} + ${num3} = ?`;
+      }
+      break;
+
+    default:
+      // Si niveau > 5, revenir au niveau 5
+      return generateProblem(5);
   }
 
-  return <>{children}</>;
+  return { question, answer, type };
 };
 
 function App() {
-  const [showLogin, setShowLogin] = useState(false);
-  const [showRegister, setShowRegister] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
-  const [gameStats, setGameStats] = useState<GameStats>(DEFAULT_GAME_STATS);
-  const [showDashboard, setShowDashboard] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [gameStats, setGameStats] = useState(DEFAULT_GAME_STATS);
   const [playerPos, setPlayerPos] = useState<Position>({ x: 0, y: 0 });
   const [targetPos, setTargetPos] = useState<Position>({ x: 2, y: 2 });
-  const [gauge, setGauge] = useState<number>(0);
-  const [score, setScore] = useState<number>(0);
-  const [level, setLevel] = useState<number>(1);
-  const [gridSize, setGridSize] = useState<number>(3);
-  const [gameOver, setGameOver] = useState<boolean>(false);
-  const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
-  const [userAnswer, setUserAnswer] = useState<string>('');
-  const [message, setMessage] = useState<string>('');
-  const [startTime, setStartTime] = useState<number>(Date.now());
-  const [totalResponseTime, setTotalResponseTime] = useState<number>(0);
-  const [correctAnswers, setCorrectAnswers] = useState<number>(0);
-  const [totalAttempts, setTotalAttempts] = useState<number>(0);
-  const [problemTypes, setProblemTypes] = useState<Record<string, { correct: number; total: number }>>({
-    addition: { correct: 0, total: 0 },
-    subtraction: { correct: 0, total: 0 },
-    multiplication: { correct: 0, total: 0 },
-    division: { correct: 0, total: 0 },
-    power: { correct: 0, total: 0 },
-    algebraic: { correct: 0, total: 0 }
-  });
+  const [gaugeValue, setGaugeValue] = useState<number>(100);
+  const [gaugeSpeed, setGaugeSpeed] = useState<number>(0.2);
+  const [gameOver, setGameOver] = useState(false);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [level, setLevel] = useState(1);
+  const [showCognitiveChat, setShowCognitiveChat] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [currentProblem, setCurrentProblem] = useState<Problem>(generateProblem(1));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const problemStartTime = useRef<number>(Date.now());
+  const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+  const feedbackTimeout = useRef<number>();
+
+  // Réinitialiser le temps de début quand un nouveau problème est généré
+  useEffect(() => {
+    problemStartTime.current = Date.now();
+  }, [currentProblem]);
+
+  const generateNewConfiguration = () => {
+    // Générer une nouvelle position de cible aléatoire
+    const newX = Math.floor(Math.random() * 5);
+    const newY = Math.floor(Math.random() * 5);
+    setTargetPos({ x: newX, y: newY });
+  };
+
+  const handleTargetReached = () => {
+    // Ralentir la diminution de la barre pendant 3 secondes
+    setGaugeSpeed(0.05); // Vitesse très lente
+    setTimeout(() => {
+      setGaugeSpeed(calculateGaugeDecrease(level)); // Retour à la vitesse normale
+    }, 3000);
+    
+    // Générer une nouvelle configuration
+    generateNewConfiguration();
+  };
+
+  const calculateGaugeDecrease = (level: number): number => {
+    // La vitesse de diminution augmente avec le niveau
+    const baseDecrease = 0.2;
+    return baseDecrease + (level * 0.1);
+  };
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-      setShowLogin(false);
-      setShowRegister(false);
+    if (!gameOver) {
+      const interval = setInterval(() => {
+        setGaugeValue(prev => {
+          const newValue = prev - gaugeSpeed;
+          if (newValue <= 0) {
+            setGameOver(true);
+            userStatsService.saveUserStats(gameStats);
+            return 0;
+          }
+          return newValue;
+        });
+      }, 100);
+
+      return () => clearInterval(interval);
     }
-  }, []);
+  }, [gameOver, gaugeSpeed]);
+
+  useEffect(() => {
+    // Mettre à jour la vitesse de la jauge quand le niveau change
+    setGaugeSpeed(calculateGaugeDecrease(level));
+  }, [level]);
 
   const handleLogin = () => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setShowLogin(false);
+    setIsAuthenticated(true);
     setShowRegister(false);
+    navigate('/');
   };
 
   const handleRegister = () => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setShowLogin(false);
+    setIsAuthenticated(true);
     setShowRegister(false);
+    navigate('/');
   };
 
   const handleLogout = () => {
     authService.logout();
-    setUser(null);
-    setShowLogin(true);
+    setIsAuthenticated(false);
     setShowRegister(false);
-    setShowDashboard(false);
+    setGameStats(DEFAULT_GAME_STATS);
+    navigate('/login');
   };
 
-  const generateNewTarget = useCallback(() => {
-    let newX, newY;
-    do {
-      newX = Math.floor(Math.random() * gridSize);
-      newY = Math.floor(Math.random() * gridSize);
-    } while (newX === playerPos.x && newY === playerPos.y);
-    setTargetPos({ x: newX, y: newY });
-  }, [playerPos, gridSize]);
+  const handleShowRegister = () => {
+    setShowRegister(true);
+  };
 
-  const generateProblem = useCallback(() => {
-    const getNumberRange = () => {
-      if (level <= 5) return 10;
-      if (level <= 10) return 20;
-      if (level <= 15) return 50;
-      return 100;
-    };
+  const handleShowLogin = () => {
+    setShowRegister(false);
+  };
 
-    const getAvailableOperations = () => {
-      if (level <= 3) return ['+'];
-      if (level <= 6) return ['+', '-'];
-      if (level <= 10) return ['+', '-', '*'];
-      if (level <= 15) return ['+', '-', '*', '/'];
-      return ['+', '-', '*', '/', '^'];
-    };
-
-    const operations = getAvailableOperations();
-    const operation = operations[Math.floor(Math.random() * operations.length)];
-    const range = getNumberRange();
-    
-    let num1 = Math.floor(Math.random() * range) + 1;
-    let num2 = Math.floor(Math.random() * range) + 1;
-    let problemType: Problem['type'] = 'addition';
-
-    switch (operation) {
-      case '-':
-        num1 = Math.max(num1, num2);
-        problemType = 'subtraction';
-        break;
-      case '/':
-        num2 = Math.min(num2, 10);
-        num1 = num2 * (Math.floor(Math.random() * 10) + 1);
-        problemType = 'division';
-        break;
-      case '^':
-        num1 = Math.min(num1, 10);
-        num2 = Math.min(num2, 3);
-        problemType = 'power';
-        break;
-      case '*':
-        problemType = 'multiplication';
-        break;
-      case '+':
-        problemType = 'addition';
-        break;
+  const handleGameOver = async () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
     }
-
-    let answer: number;
-    let question: string;
-
-    if (level >= 20) {
-      const x = Math.floor(Math.random() * 10) + 1;
-      const b = Math.floor(Math.random() * 20) + 1;
-      answer = x;
-      question = `${b} + x = ${b + x}`;
-      problemType = 'algebraic';
-    } else {
-      switch (operation) {
-        case '+':
-          answer = num1 + num2;
-          question = `${num1} + ${num2} = ?`;
-          break;
-        case '-':
-          answer = num1 - num2;
-          question = `${num1} - ${num2} = ?`;
-          break;
-        case '*':
-          answer = num1 * num2;
-          question = `${num1} × ${num2} = ?`;
-          break;
-        case '/':
-          answer = num1 / num2;
-          question = `${num1} ÷ ${num2} = ?`;
-          break;
-        case '^':
-          answer = Math.pow(num1, num2);
-          question = `${num1}^${num2} = ?`;
-          break;
-        default:
-          answer = 0;
-          question = 'Error';
-      }
-    }
-
-    setProblemTypes(prev => ({
-      ...prev,
-      [problemType]: {
-        ...prev[problemType],
-        total: prev[problemType].total + 1
-      }
-    }));
-
-    setStartTime(Date.now());
-    return { question, answer, type: problemType };
-  }, [level]);
-
-  const handleGameOver = useCallback(async () => {
     setGameOver(true);
-    const finalStats: GameStats = {
-      level,
-      score,
-      correctAnswers,
-      totalAttempts,
-      averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
-      problemTypes
-    };
 
-    // Sauvegarder les statistiques finales
-    saveGameStats(finalStats);
-    saveGameHistoryToLocalStorage(finalStats);
-    
+    // On utilise directement les stats actuelles sans les modifier
     try {
-      await saveGameSession(finalStats);
+      await userStatsService.saveUserStats(gameStats);
     } catch (error) {
-      console.error('Failed to save game session to file:', error);
+      console.error('Erreur lors de la sauvegarde des statistiques:', error);
     }
-  }, [level, score, correctAnswers, totalAttempts, totalResponseTime, problemTypes]);
+  };
 
-  const getGaugeSpeed = useCallback(() => {
-    const baseSpeed = 150;
-    
-    if (level === 8) {
-      return 300;
+  const handleEndGame = async () => {
+    await handleGameOver();
+    navigate('/dashboard', { state: { gameStats } });
+  };
+
+  const handleReturnToGame = () => {
+    setGameStats(DEFAULT_GAME_STATS);
+    setGameOver(false);
+    setGaugeValue(100);
+    setLevel(1);
+    setCurrentProblem(generateProblem(1));
+    setPlayerPos({ x: 0, y: 0 });
+    setTargetPos({ x: 2, y: 2 });
+    navigate('/');
+  };
+
+  const showFeedback = (message: string) => {
+    if (feedbackTimeout.current) {
+      clearTimeout(feedbackTimeout.current);
     }
-    
-    const speedReduction = Math.min(100, level * 5);
-    const speed = Math.max(50, baseSpeed - speedReduction);
-    
-    if (level === 7) return speed * 1.5;
-    if (level === 9) return speed * 0.75;
-    
-    return speed;
-  }, [level]);
+    setFeedbackMessage(message);
+    feedbackTimeout.current = setTimeout(() => {
+      setFeedbackMessage('');
+    }, 1500);
+  };
 
-  useEffect(() => {
-    if (!currentProblem) {
-      const newProblem = generateProblem();
-      setCurrentProblem(newProblem);
-    }
-  }, [currentProblem, generateProblem]);
-
-  useEffect(() => {
-    if (!gameOver) {
-      const gaugeInterval = setInterval(() => {
-        setGauge(prev => {
-          const newValue = prev + 1;
-          if (newValue >= 100) {
-            clearInterval(gaugeInterval);
-            handleGameOver();
-            return 100;
+  const handleAnswerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const answer = parseFloat(userAnswer);
+    const endTime = Date.now();
+    const responseTime = endTime - problemStartTime.current;
+    
+    const currentStats = {
+      ...gameStats,
+      problemTypes: {
+        ...DEFAULT_GAME_STATS.problemTypes,
+        ...gameStats.problemTypes
+      }
+    };
+    
+    if (answer === currentProblem.answer) {
+      // Bonne réponse : points, progression de niveau et nouveau problème
+      showFeedback('Correct !');
+      const newStats = {
+        ...currentStats,
+        score: currentStats.score + (level * 10),
+        correctAnswers: currentStats.correctAnswers + 1,
+        totalAttempts: currentStats.totalAttempts + 1,
+        averageResponseTime: (currentStats.averageResponseTime * currentStats.totalAttempts + responseTime) / (currentStats.totalAttempts + 1),
+        problemTypes: {
+          ...currentStats.problemTypes,
+          [currentProblem.type]: {
+            correct: (currentStats.problemTypes[currentProblem.type]?.correct || 0) + 1,
+            total: (currentStats.problemTypes[currentProblem.type]?.total || 0) + 1
           }
-          return newValue;
-        });
-      }, getGaugeSpeed());
-
-      return () => clearInterval(gaugeInterval);
-    }
-  }, [gameOver, getGaugeSpeed]);
-
-  useEffect(() => {
-    if (gameOver && user) {
-      const finalStats: GameStats = {
-        level,
-        score,
-        correctAnswers,
-        totalAttempts,
-        averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
-        problemTypes
+        }
       };
       
-      setGameStats(finalStats);
-      // Sauvegarder dans le CSV des parties
-      csvManager.addGameRecord(user.id, finalStats);
+      setGameStats(newStats);
+      
+      // Passage au niveau suivant après 10 opérations réussies
+      if (newStats.correctAnswers % 10 === 0) {
+        handleLevelUp();
+      }
+
+      // Réinitialiser la barre à 100% et générer un nouveau problème
+      setGaugeValue(100);
+      setCurrentProblem(generateProblem(level));
+    } else {
+      // Mauvaise réponse : comptabiliser la tentative et garder le même problème
+      showFeedback('Incorrect !');
+      const newStats = {
+        ...currentStats,
+        totalAttempts: currentStats.totalAttempts + 1,
+        averageResponseTime: (currentStats.averageResponseTime * currentStats.totalAttempts + responseTime) / (currentStats.totalAttempts + 1),
+        problemTypes: {
+          ...currentStats.problemTypes,
+          [currentProblem.type]: {
+            correct: currentStats.problemTypes[currentProblem.type]?.correct || 0,
+            total: (currentStats.problemTypes[currentProblem.type]?.total || 0) + 1
+          }
+        }
+      };
+      
+      setGameStats(newStats);
     }
-  }, [gameOver, user, level, score, correctAnswers, totalAttempts, totalResponseTime, problemTypes]);
 
-  const currentGameStats: GameStats = useMemo(() => ({
-    level,
-    score,
-    correctAnswers,
-    totalAttempts,
-    averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
-    problemTypes
-  }), [level, score, correctAnswers, totalAttempts, totalResponseTime, problemTypes]);
+    problemStartTime.current = Date.now();
+    setUserAnswer('');
+  };
 
-  const handleMove = (direction: 'up' | 'down' | 'left' | 'right') => {
+  const handleKeyPress = (e: KeyboardEvent) => {
     if (gameOver) return;
 
-    const moves = {
-      up: { x: 0, y: -1 },
-      down: { x: 0, y: 1 },
-      left: { x: -1, y: 0 },
-      right: { x: 1, y: 0 }
-    };
+    const newPos = { ...playerPos };
 
-    const newPos = {
-      x: Math.max(0, Math.min(gridSize - 1, playerPos.x + moves[direction].x)),
-      y: Math.max(0, Math.min(gridSize - 1, playerPos.y + moves[direction].y))
-    };
+    switch (e.key) {
+      case 'ArrowUp':
+        if (newPos.y > 0) newPos.y -= 1;
+        break;
+      case 'ArrowDown':
+        if (newPos.y < 4) newPos.y += 1;
+        break;
+      case 'ArrowLeft':
+        if (newPos.x > 0) newPos.x -= 1;
+        break;
+      case 'ArrowRight':
+        if (newPos.x < 4) newPos.x += 1;
+        break;
+      default:
+        return;
+    }
 
     setPlayerPos(newPos);
 
     if (newPos.x === targetPos.x && newPos.y === targetPos.y) {
-      const newLevel = level + 1;
-      const newScore = score + 20;
-      
-      setLevel(newLevel);
-      setGauge(0);
-      setScore(newScore);
-      setMessage(`Target reached! Level ${newLevel} 🎯`);
-      
-      if (newLevel % 4 === 0 && gridSize < 8) {
-        setGridSize(prev => prev + 1);
-      }
-      
-      generateNewTarget();
-      
-      // Sauvegarder les statistiques après avoir atteint la cible
-      const currentStats: GameStats = {
-        level: newLevel,
-        score: newScore,
-        correctAnswers,
-        totalAttempts,
-        averageResponseTime: totalAttempts > 0 ? totalResponseTime / totalAttempts : 0,
-        problemTypes
-      };
-      
-      saveGameStats(currentStats);
-      updateMaxLevels(newLevel);
+      handleTargetReached();
     }
   };
 
-  const handleAnswer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentProblem) return;
+  const handleLevelUp = () => {
+    if (level < 5) { // Maximum 5 niveaux
+      setLevel(prev => prev + 1);
+      // Réinitialiser la barre et les stats pour le nouveau niveau
+      setGaugeValue(100);
+      setGameStats(prevStats => ({
+        ...prevStats,
+        problemTypes: {
+          ...DEFAULT_GAME_STATS.problemTypes,
+          ...prevStats.problemTypes
+        }
+      }));
+    }
+  };
 
-    const responseTime = Date.now() - startTime;
-    const newTotalResponseTime = totalResponseTime + responseTime;
-    const newTotalAttempts = totalAttempts + 1;
-    
-    setTotalResponseTime(newTotalResponseTime);
-    setTotalAttempts(newTotalAttempts);
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    setIsAuthenticated(!!user);
+  }, []);
 
-    const numAnswer = parseInt(userAnswer);
-    const isCorrect = numAnswer === currentProblem.answer;
-
-    // Mettre à jour les statistiques
-    const newProblemTypes = {
-      ...problemTypes,
-      [currentProblem.type]: {
-        ...problemTypes[currentProblem.type],
-        total: problemTypes[currentProblem.type].total + 1,
-        correct: isCorrect ? problemTypes[currentProblem.type].correct + 1 : problemTypes[currentProblem.type].correct
-      }
-    };
-
-    setProblemTypes(newProblemTypes);
-
-    const newCorrectAnswers = isCorrect ? correctAnswers + 1 : correctAnswers;
-    const newScore = isCorrect ? score + 10 : score;
-
-    if (isCorrect) {
-      setScore(newScore);
-      setGauge(prev => Math.max(0, prev - 20));
-      setMessage('Correct! 🎉');
-      setCorrectAnswers(newCorrectAnswers);
-      
-      const newProblem = generateProblem();
-      setCurrentProblem(newProblem);
-      setUserAnswer('');
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser) {
+      navigate('/login');
     } else {
-      setGauge(prev => prev + 10);
-      setMessage('Wrong answer! Try again ❌');
+      setCurrentProblem(generateProblem(1));
     }
+  }, [navigate]);
 
-    // Sauvegarder les statistiques après chaque réponse
-    const currentStats: GameStats = {
-      level,
-      score: newScore,
-      correctAnswers: newCorrectAnswers,
-      totalAttempts: newTotalAttempts,
-      averageResponseTime: newTotalResponseTime / newTotalAttempts,
-      problemTypes: newProblemTypes
-    };
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
-    saveGameStats(currentStats);
-  };
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [handleKeyPress]);
 
-  const restartGame = () => {
-    setPlayerPos({ x: 0, y: 0 });
-    setTargetPos({ x: 2, y: 2 });
-    setGauge(0);
-    setScore(0);
-    setLevel(1);
-    setGridSize(3);
-    setGameOver(false);
-    setCurrentProblem(generateProblem());
-    setUserAnswer('');
-    setMessage('');
-    setCorrectAnswers(0);
-    setTotalAttempts(0);
-    setTotalResponseTime(0);
-    setProblemTypes({
-      addition: { correct: 0, total: 0 },
-      subtraction: { correct: 0, total: 0 },
-      multiplication: { correct: 0, total: 0 },
-      division: { correct: 0, total: 0 },
-      power: { correct: 0, total: 0 },
-      algebraic: { correct: 0, total: 0 }
-    });
-  };
-
-  const navigate = useNavigate();
-
-  const handleGameEnd = (stats: GameStats) => {
-    setGameStats(stats);
-    navigate('/dashboard');
-  };
+  if (!isAuthenticated) {
+    if (showRegister) {
+      return <Register onRegister={handleRegister} onLoginClick={handleShowLogin} />;
+    }
+    return <Login onLogin={handleLogin} onRegisterClick={handleShowRegister} />;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Routes>
-        <Route path="/login" element={<Login onLogin={handleLogin} onRegisterClick={() => {
-          setShowLogin(false);
-          setShowRegister(true);
-        }} />} />
-        <Route path="/register" element={<Register onRegister={handleRegister} onLoginClick={() => {
-          setShowRegister(false);
-          setShowLogin(true);
-        }} />} />
-        <Route
-          path="/game"
-          element={
-            <PrivateRoute>
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center py-4">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {user ? `Bienvenue, ${user.username}` : 'MathRunner'}
-                  </h1>
-                  <div className="flex items-center gap-4">
-                    {user && (
-                      <>
-                        <button
-                          onClick={() => setShowDashboard(true)}
-                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                        >
-                          Statistiques
-                        </button>
-                        <button
-                          onClick={handleLogout}
-                          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                        >
-                          <LogOut size={20} />
-                          Déconnexion
-                        </button>
-                      </>
-                    )}
+    <Routes>
+      <Route 
+        path="/" 
+        element={
+          <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center py-4">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-8 h-8 text-white" />
+                  <h1 className="text-3xl font-bold text-white">Math Runner</h1>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handleLogout}
+                    className="bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition"
+                  >
+                    Déconnexion
+                  </button>
+                  <button
+                    onClick={handleEndGame}
+                    disabled={gameOver}
+                    className={`px-4 py-2 rounded-lg font-semibold ${
+                      gameOver 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-red-500 text-white hover:bg-red-600'
+                    }`}
+                  >
+                    Terminer la partie
+                  </button>
+                  <div className="text-xl font-semibold text-white">
+                    Niveau: {level}
+                  </div>
+                  <div className="text-xl font-semibold text-white">
+                    Score: {gameStats.score}
                   </div>
                 </div>
+              </div>
 
-                {showDashboard ? (
-                  <Dashboard
-                    gameStats={currentGameStats}
-                    onReturn={() => setShowDashboard(false)}
-                  />
-                ) : (
-                  <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
-                    {gameOver ? (
-                      <div className="text-center">
-                        <h2 className="text-2xl font-bold text-red-600 mb-4">Game Over!</h2>
-                        <p className="text-xl mb-4">Final Score: {score}</p>
-                        <p className="text-lg mb-4">Level Reached: {level}</p>
+              <div className="mt-8">
+                <div className="bg-white p-8 rounded-xl shadow-2xl">
+                  <div className="mb-6">
+                    {!gameOver && (
+                      <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div 
+                          className="h-full bg-red-500 rounded-full transition-all duration-300"
+                          style={{ width: `${gaugeValue}%` }}
+                        ></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {gameOver ? (
+                    <div className="text-center">
+                      <h2 className="text-2xl font-bold text-red-600 mb-4">Partie terminée !</h2>
+                      <p className="text-xl mb-4">Score final : {gameStats.score}</p>
+                      <p className="text-lg mb-4">Niveau atteint : {level}</p>
+                      <div className="space-y-2 mb-6">
+                        <p className="text-gray-600">Bonnes réponses : {gameStats.correctAnswers}/{gameStats.totalAttempts}</p>
+                        <p className="text-gray-600">Précision : {
+                          gameStats.totalAttempts > 0 
+                            ? ((gameStats.correctAnswers / gameStats.totalAttempts) * 100).toFixed(1) 
+                            : 0
+                        }%</p>
+                        <p className="text-gray-600">Temps moyen de réponse : {
+                          gameStats.totalAttempts > 0 
+                            ? (gameStats.averageResponseTime / gameStats.totalAttempts / 1000).toFixed(2) 
+                            : 0
+                        }s</p>
+                      </div>
+                      <div className="flex justify-center gap-4">
                         <button
-                          onClick={restartGame}
+                          onClick={handleReturnToGame}
                           className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
                         >
-                          Play Again
+                          Nouvelle partie
+                        </button>
+                        <button
+                          onClick={() => navigate('/dashboard', { state: { gameStats } })}
+                          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+                        >
+                          Voir les statistiques
                         </button>
                       </div>
-                    ) : (
-                      <>
-                        <div className={`grid gap-1 mb-6 bg-gray-100 p-2 rounded-lg mx-auto`} 
-                             style={{ 
-                               gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-                               width: 'fit-content'
-                             }}>
-                          {Array.from({ length: gridSize * gridSize }).map((_, index) => {
-                            const x = index % gridSize;
-                            const y = Math.floor(index / gridSize);
-                            const isPlayer = x === playerPos.x && y === playerPos.y;
-                            const isTarget = x === targetPos.x && y === targetPos.y;
-
-                            return (
-                              <div
-                                key={index}
-                                className={`w-16 h-16 rounded flex items-center justify-center ${
-                                  isPlayer ? 'bg-purple-600' : 
-                                  isTarget ? 'bg-red-500' : 
-                                  'bg-gray-200'
-                                }`}
-                              />
-                            );
-                          })}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="text-xl font-semibold">
+                          Niveau: {level}
                         </div>
+                        <div className="text-xl font-semibold">
+                          Score: {gameStats.score}
+                        </div>
+                      </div>
+                      <div 
+                        className={`grid gap-1 mb-6 bg-gray-100 p-2 rounded-lg mx-auto`} 
+                        style={{ 
+                          gridTemplateColumns: `repeat(5, minmax(0, 1fr))`,
+                          width: 'fit-content'
+                        }}
+                      >
+                        {Array.from({ length: 25 }).map((_, index) => {
+                          const x = index % 5;
+                          const y = Math.floor(index / 5);
+                          const isPlayer = x === playerPos.x && y === playerPos.y;
+                          const isTarget = x === targetPos.x && y === targetPos.y;
 
-                        <div className="mb-6">
-                          <div className="text-center mb-4">
-                            <h3 className="text-xl font-bold">{currentProblem?.question}</h3>
-                            {message && (
-                              <p className={message.includes('Wrong') ? 'text-red-600' : 'text-green-600'}>
-                                {message}
-                              </p>
-                            )}
-                          </div>
-                          <form onSubmit={handleAnswer} className="flex gap-2">
-                            <input
-                              type="number"
-                              value={userAnswer}
-                              onChange={(e) => setUserAnswer(e.target.value)}
-                              className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2"
-                              placeholder="Enter your answer"
-                            />
-                            <button
-                              type="submit"
-                              className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
+                          return (
+                            <div
+                              key={index}
+                              className={`w-16 h-16 flex items-center justify-center rounded-lg ${
+                                isPlayer
+                                  ? 'bg-blue-500'
+                                  : isTarget
+                                  ? 'bg-green-500'
+                                  : 'bg-white'
+                              }`}
                             >
-                              Submit
-                            </button>
-                          </form>
-                        </div>
+                              {isPlayer && '🏃'}
+                              {isTarget && '🎯'}
+                            </div>
+                          );
+                        })}
+                      </div>
 
-                        <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
-                          <button
-                            onClick={() => handleMove('up')}
-                            className="col-start-2 bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
-                          >
-                            <ArrowUp className="w-6 h-6 mx-auto" />
-                          </button>
-                          <button
-                            onClick={() => handleMove('left')}
-                            className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
-                          >
-                            <ArrowLeft className="w-6 h-6 mx-auto" />
-                          </button>
-                          <button
-                            onClick={() => handleMove('down')}
-                            className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
-                          >
-                            <ArrowDown className="w-6 h-6 mx-auto" />
-                          </button>
-                          <button
-                            onClick={() => handleMove('right')}
-                            className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
-                          >
-                            <ArrowRight className="w-6 h-6 mx-auto" />
-                          </button>
+                      <div className="mb-6">
+                        <div className="text-center mb-4">
+                          <h3 className="text-xl font-bold">{currentProblem?.question}</h3>
                         </div>
-                      </>
-                    )}
-                    <CognitiveChat gameStats={currentGameStats} />
-                    <AIChat gameStats={currentGameStats} />
-                  </div>
-                )}
+                        <form onSubmit={handleAnswerSubmit} className="flex gap-2">
+                          <input
+                            type="number"
+                            value={userAnswer}
+                            onChange={(e) => setUserAnswer(e.target.value)}
+                            className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2"
+                            placeholder="Enter your answer"
+                          />
+                          <button
+                            type="submit"
+                            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition"
+                          >
+                            Submit
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
+                        <button
+                          onClick={() => handleKeyPress({ key: 'ArrowUp' } as KeyboardEvent)}
+                          className="col-start-2 bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
+                        >
+                          <ArrowUp className="w-6 h-6 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => handleKeyPress({ key: 'ArrowLeft' } as KeyboardEvent)}
+                          className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
+                        >
+                          <ArrowLeft className="w-6 h-6 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => handleKeyPress({ key: 'ArrowDown' } as KeyboardEvent)}
+                          className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
+                        >
+                          <ArrowDown className="w-6 h-6 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => handleKeyPress({ key: 'ArrowRight' } as KeyboardEvent)}
+                          className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300 transition"
+                        >
+                          <ArrowRight className="w-6 h-6 mx-auto" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </PrivateRoute>
-          }
+
+              {/* Boutons flottants et popups */}
+              <button
+                onClick={() => setShowCognitiveChat(true)}
+                className="fixed bottom-4 right-4 bg-purple-600 text-white p-4 rounded-full shadow-lg hover:bg-purple-700 transition-all"
+              >
+                <Brain className="w-6 h-6" />
+              </button>
+
+              <button
+                onClick={() => setShowAIChat(true)}
+                className="fixed bottom-4 left-4 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all"
+              >
+                <Bot className="w-6 h-6" />
+              </button>
+
+              {showCognitiveChat && (
+                <CognitiveChat 
+                  gameStats={gameStats} 
+                  onClose={() => setShowCognitiveChat(false)} 
+                />
+              )}
+
+              {showAIChat && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-6 h-6 text-blue-600" />
+                        <h3 className="text-xl font-bold">Assistant IA</h3>
+                      </div>
+                      <button
+                        onClick={() => setShowAIChat(false)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
+                    <div className="h-96 overflow-y-auto">
+                      <AIChat gameStats={gameStats} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {feedbackMessage && (
+                <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg text-white font-bold ${
+                  feedbackMessage === 'Correct !' ? 'bg-green-500' : 'bg-red-500'
+                }`}>
+                  {feedbackMessage}
+                </div>
+              )}
+            </div>
+          </div>
+        }
+      />
+      
+      <Route 
+        path="/dashboard"
+        element={
+          <Dashboard
+            gameStats={location.state?.gameStats || DEFAULT_GAME_STATS}
+            onReturnToGame={handleReturnToGame}
           />
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              authService.isAuthenticated() ? (
-                <Navigate to="/game" replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-        </Routes>
-      </div>
-    </div>
+        }
+      />
+    </Routes>
   );
 }
 

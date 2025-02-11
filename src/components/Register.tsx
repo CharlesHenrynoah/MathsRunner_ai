@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { RegisterCredentials } from '../types/auth';
 import { authService } from '../services/authService';
 
 interface RegisterProps {
@@ -7,9 +6,16 @@ interface RegisterProps {
   onLoginClick: () => void;
 }
 
+interface RegisterForm {
+  pseudo: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
 export const Register: React.FC<RegisterProps> = ({ onRegister, onLoginClick }) => {
-  const [credentials, setCredentials] = useState<RegisterCredentials>({
-    username: '',
+  const [form, setForm] = useState<RegisterForm>({
+    pseudo: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -20,8 +26,13 @@ export const Register: React.FC<RegisterProps> = ({ onRegister, onLoginClick }) 
     e.preventDefault();
     setError('');
 
+    if (form.password !== form.confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
+      return;
+    }
+
     try {
-      await authService.register(credentials);
+      await authService.register(form.pseudo, form.email, form.password);
       onRegister();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
@@ -29,7 +40,7 @@ export const Register: React.FC<RegisterProps> = ({ onRegister, onLoginClick }) 
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCredentials(prev => ({
+    setForm(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
@@ -53,16 +64,16 @@ export const Register: React.FC<RegisterProps> = ({ onRegister, onLoginClick }) 
             )}
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="pseudo" className="block text-sm font-medium text-gray-700">
                 Pseudo
               </label>
               <div className="mt-1">
                 <input
-                  id="username"
-                  name="username"
+                  id="pseudo"
+                  name="pseudo"
                   type="text"
                   required
-                  value={credentials.username}
+                  value={form.pseudo}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                 />
@@ -79,7 +90,7 @@ export const Register: React.FC<RegisterProps> = ({ onRegister, onLoginClick }) 
                   name="email"
                   type="email"
                   required
-                  value={credentials.email}
+                  value={form.email}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                 />
@@ -96,7 +107,7 @@ export const Register: React.FC<RegisterProps> = ({ onRegister, onLoginClick }) 
                   name="password"
                   type="password"
                   required
-                  value={credentials.password}
+                  value={form.password}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                 />
@@ -113,9 +124,9 @@ export const Register: React.FC<RegisterProps> = ({ onRegister, onLoginClick }) 
                   name="confirmPassword"
                   type="password"
                   required
-                  value={credentials.confirmPassword}
+                  value={form.confirmPassword}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                 />
               </div>
             </div>
