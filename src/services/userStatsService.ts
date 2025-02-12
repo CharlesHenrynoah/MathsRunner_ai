@@ -2,9 +2,15 @@ import { GameStats } from '../types/game';
 
 export class UserStatsService {
   private statsPath: string;
+  private ws: WebSocket;
 
   constructor() {
     this.statsPath = 'http://localhost:3002/api/stats';
+    this.ws = new WebSocket('ws://localhost:3002');
+    this.ws.onmessage = (event) => {
+      const updatedStats = JSON.parse(event.data);
+      this.updateStats(updatedStats);
+    };
   }
 
   async saveUserStats(stats: GameStats): Promise<void> {
@@ -51,6 +57,11 @@ export class UserStatsService {
       console.error('Error loading stats:', error);
       throw error;
     }
+  }
+
+  private updateStats(updatedStats: any) {
+    // Update the state with real-time statistics from WebSocket
+    // This function should be implemented to update the state with the received data
   }
 }
 

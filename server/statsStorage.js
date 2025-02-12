@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const WebSocket = require('ws');
 
 const STATS_DIR = path.join(__dirname, 'userStats');
 
@@ -33,6 +34,10 @@ function saveGameStats(stats, userId) {
 
         // Sauvegarder dans le fichier de l'utilisateur
         fs.writeFileSync(statsFile, JSON.stringify(userStats, null, 2));
+
+        // Broadcast the updated stats to WebSocket clients
+        broadcastStatsUpdate(userId, statsWithTimestamp);
+
         return true;
     } catch (error) {
         console.error('Erreur lors de la sauvegarde des stats:', error);
@@ -151,6 +156,18 @@ function getAllStats() {
         console.error('Erreur lors de la lecture des stats:', error);
         return {};
     }
+}
+
+function broadcastStatsUpdate(userId, stats) {
+    const data = {
+        userId,
+        stats
+    };
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(data));
+        }
+    });
 }
 
 module.exports = {

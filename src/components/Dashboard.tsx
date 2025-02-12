@@ -50,6 +50,17 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadStats();
+    const ws = new WebSocket('ws://localhost:3002');
+    ws.onmessage = (event) => {
+      const updatedStats = JSON.parse(event.data);
+      setStats((prevStats) => ({
+        ...prevStats,
+        ...updatedStats
+      }));
+    };
+    return () => {
+      ws.close();
+    };
   }, []);
 
   const loadStats = async () => {

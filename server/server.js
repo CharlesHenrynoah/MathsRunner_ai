@@ -5,8 +5,12 @@ const fs = require('fs').promises;
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { saveGameStats, getAllStats, getUserStats } = require('./statsStorage');
+const http = require('http');
+const WebSocket = require('ws');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 // Configuration CORS détaillée
 app.use(cors({
@@ -59,6 +63,23 @@ async function ensureFiles() {
   await ensureDataDir();
   await ensureFiles();
 })();
+
+// WebSocket connection
+wss.on('connection', (ws) => {
+  console.log('Client connected');
+  ws.on('close', () => {
+    console.log('Client disconnected');
+  });
+});
+
+// Broadcast function
+function broadcast(data) {
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(data));
+    }
+  });
+}
 
 // Routes d'authentification
 app.post('/api/auth/register', async (req, res) => {
@@ -181,6 +202,7 @@ app.post('/api/stats/save', (req, res) => {
     try {
         const stats = req.body;
         saveGameStats(stats);
+        broadcast(stats);
         res.json({ message: 'Stats saved successfully' });
     } catch (error) {
         console.error('Error saving stats:', error);
@@ -242,6 +264,6 @@ app.get('/dashboard', async (req, res) => {
 
 // Démarrage du serveur
 const PORT = 3002;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Serveur démarré sur http://localhost:${PORT}`);
 });
