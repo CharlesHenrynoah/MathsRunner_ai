@@ -54,7 +54,7 @@ export const Dashboard: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stats/load?userId=current_user`);
+      const response = await fetch(`${API_BASE_URL}/api/stats/load`);
       if (!response.ok) {
         throw new Error('Failed to load stats');
       }
