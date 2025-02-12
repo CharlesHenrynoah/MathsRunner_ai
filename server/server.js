@@ -133,13 +133,8 @@ app.post('/api/auth/login', async (req, res) => {
 // Endpoint pour sauvegarder les stats d'un utilisateur
 app.post('/api/stats/:userId', (req, res) => {
     const { userId } = req.params;
-    const stats = req.body;
-    const success = saveGameStats(stats, userId);
-    if (success) {
-        res.json({ message: 'Statistiques sauvegardées avec succès' });
-    } else {
-        res.status(500).json({ error: 'Erreur lors de la sauvegarde des statistiques' });
-    }
+    const stats = getUserStats(userId);
+    res.json(stats);
 });
 
 // Endpoint pour récupérer les stats d'un utilisateur spécifique
@@ -223,40 +218,8 @@ app.get('/api/stats/user/:userId', async (req, res) => {
 app.get('/api/stats/summary/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const statsData = await fs.readFile(STATS_FILE, 'utf-8');
-    const userStats = statsData.split('\n').slice(1)
-      .filter(line => line && line.split(',')[1] === userId)
-      .map(line => {
-        const [_, __, ___, ____, level, score, accuracy, avgResponseTime] = line.split(',');
-        return {
-          level: parseInt(level),
-          score: parseInt(score),
-          accuracy: parseFloat(accuracy),
-          avgResponseTime: parseFloat(avgResponseTime)
-        };
-      });
-
-    if (userStats.length === 0) {
-      return res.json({
-        bestScore: 0,
-        averageScore: 0,
-        totalGames: 0,
-        bestLevel: 0,
-        bestAccuracy: 0,
-        bestResponseTime: 0
-      });
-    }
-
-    const summary = {
-      bestScore: Math.max(...userStats.map(s => s.score)),
-      averageScore: userStats.reduce((acc, s) => acc + s.score, 0) / userStats.length,
-      totalGames: userStats.length,
-      bestLevel: Math.max(...userStats.map(s => s.level)),
-      bestAccuracy: Math.max(...userStats.map(s => s.accuracy)),
-      bestResponseTime: Math.min(...userStats.map(s => s.avgResponseTime))
-    };
-
-    res.json(summary);
+    const stats = getUserStats(userId);
+    res.json(stats);
   } catch (error) {
     console.error('Erreur lors de la récupération du résumé:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération du résumé' });
