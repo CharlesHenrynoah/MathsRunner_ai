@@ -9,7 +9,7 @@ export interface User {
 }
 
 class AuthService {
-  private readonly API_URL = 'http://localhost:3001/api';
+  private readonly API_URL = 'http://localhost:3002/api';
   private currentUser: User | null = null;
 
   constructor() {

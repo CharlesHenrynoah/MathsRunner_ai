@@ -1,23 +1,41 @@
 export type ProblemType = 'addition' | 'subtraction' | 'multiplication' | 'division' | 'puissance' | 'algebre';
 
+export interface Operation {
+  id: string;
+  type: ProblemType;
+  expression: string;
+  answer: number;
+  userAnswer?: number;
+  timeSpent: number;
+  correct: boolean;
+  timestamp: string;
+}
+
 export interface ProblemTypeStats {
+  operations: Operation[];
   correct: number;
   total: number;
+  totalTime: number;
+  averageTime: number;
 }
 
 export interface GameStats {
   score: number;
   level: number;
-  correctAnswers: number;
   totalAttempts: number;
+  correctAnswers: number;
+  totalResponseTime: number;
   averageResponseTime: number;
-  problemTypes: {
-    [key in ProblemType]?: {
-      correct: number;
-      total: number;
-    };
-  };
+  problemTypes: Record<ProblemType, ProblemTypeStats>;
   timestamp?: string;
+  forcedEnd?: boolean;
+}
+
+export interface Problem {
+  type: ProblemType;
+  expression: string;
+  answer: number;
+  id: string;
 }
 
 export interface PeriodStats {

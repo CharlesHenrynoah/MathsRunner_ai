@@ -9,7 +9,7 @@ export interface User {
 }
 
 class UserService {
-  private readonly API_URL = 'http://localhost:3001/api';
+  private readonly API_URL = 'http://localhost:3002/api';
 
   async createUser(user: Omit<User, 'id' | 'createdAt' | 'lastLogin'>): Promise<User> {
     const response = await axios.post(`${this.API_URL}/users`, user);

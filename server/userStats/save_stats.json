@@ -1,0 +1,177 @@
+[
+  {
+    "score": 10,
+    "level": 1,
+    "correctAnswers": 1,
+    "totalAttempts": 1,
+    "averageResponseTime": 3257,
+    "problemTypes": {
+      "addition": {
+        "correct": 1,
+        "total": 1
+      },
+      "subtraction": {
+        "correct": 0,
+        "total": 0
+      },
+      "multiplication": {
+        "correct": 0,
+        "total": 0
+      },
+      "division": {
+        "correct": 0,
+        "total": 0
+      },
+      "puissance": {
+        "correct": 0,
+        "total": 0
+      },
+      "algebre": {
+        "correct": 0,
+        "total": 0
+      }
+    },
+    "timestamp": "2025-02-12T18:01:44.025Z",
+    "userId": "save"
+  },
+  {
+    "score": 0,
+    "level": 1,
+    "correctAnswers": 0,
+    "totalAttempts": 0,
+    "averageResponseTime": 0,
+    "problemTypes": {
+      "addition": {
+        "correct": 0,
+        "total": 0
+      },
+      "subtraction": {
+        "correct": 0,
+        "total": 0
+      },
+      "multiplication": {
+        "correct": 0,
+        "total": 0
+      },
+      "division": {
+        "correct": 0,
+        "total": 0
+      },
+      "puissance": {
+        "correct": 0,
+        "total": 0
+      },
+      "algebre": {
+        "correct": 0,
+        "total": 0
+      }
+    },
+    "timestamp": "2025-02-12T18:07:46.502Z",
+    "userId": "save"
+  },
+  {
+    "score": 0,
+    "level": 1,
+    "correctAnswers": 0,
+    "totalAttempts": 0,
+    "averageResponseTime": 0,
+    "problemTypes": {
+      "addition": {
+        "correct": 0,
+        "total": 0
+      },
+      "subtraction": {
+        "correct": 0,
+        "total": 0
+      },
+      "multiplication": {
+        "correct": 0,
+        "total": 0
+      },
+      "division": {
+        "correct": 0,
+        "total": 0
+      },
+      "puissance": {
+        "correct": 0,
+        "total": 0
+      },
+      "algebre": {
+        "correct": 0,
+        "total": 0
+      }
+    },
+    "timestamp": "2025-02-12T18:09:59.121Z",
+    "userId": "save"
+  },
+  {
+    "score": 0,
+    "level": 1,
+    "correctAnswers": 0,
+    "totalAttempts": 0,
+    "averageResponseTime": 0,
+    "problemTypes": {
+      "addition": {
+        "correct": 0,
+        "total": 0
+      },
+      "subtraction": {
+        "correct": 0,
+        "total": 0
+      },
+      "multiplication": {
+        "correct": 0,
+        "total": 0
+      },
+      "division": {
+        "correct": 0,
+        "total": 0
+      },
+      "puissance": {
+        "correct": 0,
+        "total": 0
+      },
+      "algebre": {
+        "correct": 0,
+        "total": 0
+      }
+    },
+    "timestamp": "2025-02-12T18:10:50.787Z",
+    "userId": "save"
+  },
+  {
+    "score": 30,
+    "level": 1,
+    "correctAnswers": 3,
+    "totalAttempts": 3,
+    "averageResponseTime": 6571,
+    "problemTypes": {
+      "addition": {
+        "correct": 1,
+        "total": 1
+      },
+      "subtraction": {
+        "correct": 2,
+        "total": 2
+      },
+      "multiplication": {
+        "correct": 0,
+        "total": 0
+      },
+      "division": {
+        "correct": 0,
+        "total": 0
+      },
+      "puissance": {
+        "correct": 0,
+        "total": 0
+      },
+      "algebre": {
+        "correct": 0,
+        "total": 0
+      }
+    },
+    "timestamp": "2025-02-12T18:15:28.963Z",
+    "userId": "save"
+  }
+]

@@ -1,62 +1,164 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
-import { GameStats } from '../types/game';
-import { generateMathProblem } from '../utils/mathProblems';
-import { CognitiveChat } from './CognitiveChat';
-import { AIChat } from './AIChat';
+import { GameSession } from '../models/Game';
+import { Problem, ProblemType } from '../types/game';
+
+const calculatePoints = (timeSpent: number, level: number): number => {
+  const basePoints = 10;
+  const timeBonus = Math.max(0, 5 - timeSpent / 1000) * 2;
+  return Math.round((basePoints + timeBonus) * level);
+};
+
+const shouldLevelUp = (score: number): boolean => {
+  const nextLevelThreshold = Math.pow(score, 1.1) + 100;
+  return score >= nextLevelThreshold;
+};
+
+const generateProblem = (level: number): Problem => {
+  const types: ProblemType[] = ['addition', 'subtraction', 'multiplication', 'division', 'puissance', 'algebre'];
+  const type = types[Math.floor(Math.random() * (Math.min(level, types.length)))];
+  
+  let num1: number, num2: number, answer: number, expression: string;
+  
+  switch (type) {
+    case 'addition':
+      num1 = Math.floor(Math.random() * (10 * level)) + 1;
+      num2 = Math.floor(Math.random() * (10 * level)) + 1;
+      answer = num1 + num2;
+      expression = `${num1} + ${num2}`;
+      break;
+    case 'subtraction':
+      num1 = Math.floor(Math.random() * (10 * level)) + 1;
+      num2 = Math.floor(Math.random() * num1) + 1;
+      answer = num1 - num2;
+      expression = `${num1} - ${num2}`;
+      break;
+    case 'multiplication':
+      num1 = Math.floor(Math.random() * (5 * level)) + 1;
+      num2 = Math.floor(Math.random() * (5 * level)) + 1;
+      answer = num1 * num2;
+      expression = `${num1} × ${num2}`;
+      break;
+    case 'division':
+      num2 = Math.floor(Math.random() * (5 * level)) + 1;
+      answer = Math.floor(Math.random() * (5 * level)) + 1;
+      num1 = num2 * answer;
+      expression = `${num1} ÷ ${num2}`;
+      break;
+    case 'puissance':
+      num1 = Math.floor(Math.random() * (3 * level)) + 1;
+      num2 = Math.floor(Math.random() * 3) + 1;
+      answer = Math.pow(num1, num2);
+      expression = `${num1}^${num2}`;
+      break;
+    default: // algebre
+      answer = Math.floor(Math.random() * (10 * level)) + 1;
+      num2 = Math.floor(Math.random() * (10 * level)) + 1;
+      num1 = answer + num2;
+      expression = `x + ${num2} = ${num1}`;
+  }
+  
+  return {
+    type,
+    expression,
+    answer,
+    id: `${type}_${Date.now()}`
+  };
+};
 
 export const Game: React.FC = () => {
   const navigate = useNavigate();
-  const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
+  const [level, setLevel] = useState(1);
   const [gameOver, setGameOver] = useState(false);
-  const [currentProblem, setCurrentProblem] = useState(generateMathProblem(1));
+  const [currentProblem, setCurrentProblem] = useState<Problem>(generateProblem(1));
   const [userAnswer, setUserAnswer] = useState('');
   const [message, setMessage] = useState('');
-  const [gameStats, setGameStats] = useState<GameStats>({
-    level: 1,
-    score: 0,
-    totalAttempts: 0,
-    correctAnswers: 0,
-    averageResponseTime: 0,
-    problemTypes: {}
-  });
-
+  const [startTime, setStartTime] = useState<number>(Date.now());
+  const [gameSession, setGameSession] = useState<GameSession | null>(null);
+  
   const gridSize = Math.min(5 + Math.floor(level / 3), 10);
   const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
-  const [targetPos, setTargetPos] = useState({ 
-    x: gridSize - 1, 
-    y: gridSize - 1 
-  });
+  const [targetPos, setTargetPos] = useState({ x: gridSize - 1, y: gridSize - 1 });
 
-  const handleAnswer = (e: React.FormEvent) => {
+  useEffect(() => {
+    setGameSession(new GameSession());
+    setCurrentProblem(generateProblem(1));
+  }, []);
+
+  const handleCorrectAnswer = (timeSpent: number) => {
+    const points = calculatePoints(timeSpent, level);
+    setScore(prevScore => {
+      const newScore = prevScore + points;
+      gameSession?.updateScore(newScore);
+      return newScore;
+    });
+
+    gameSession?.recordProblemAttempt(
+      currentProblem.type,
+      currentProblem.expression,
+      currentProblem.answer,
+      parseInt(userAnswer),
+      timeSpent,
+      true
+    );
+
+    if (shouldLevelUp(score)) {
+      setLevel(prevLevel => {
+        const newLevel = prevLevel + 1;
+        gameSession?.updateLevel(newLevel);
+        return newLevel;
+      });
+    }
+  };
+
+  const handleWrongAnswer = (timeSpent: number) => {
+    gameSession?.recordProblemAttempt(
+      currentProblem.type,
+      currentProblem.expression,
+      currentProblem.answer,
+      parseInt(userAnswer),
+      timeSpent,
+      false
+    );
+  };
+
+  const handleGameOver = async (forced: boolean = false) => {
+    setGameOver(true);
+    if (gameSession) {
+      try {
+        const finalStats = await gameSession.endGame(forced);
+        navigate('/dashboard', { state: { gameStats: finalStats } });
+      } catch (error) {
+        console.error('Error ending game:', error);
+      }
+    }
+  };
+
+  const handleQuit = () => {
+    handleGameOver(true);
+  };
+
+  const handleAnswer = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
     const answer = parseInt(userAnswer);
     const correct = answer === currentProblem.answer;
 
-    setGameStats(prev => ({
-      ...prev,
-      totalAttempts: prev.totalAttempts + 1,
-      correctAnswers: correct ? prev.correctAnswers + 1 : prev.correctAnswers,
-      problemTypes: {
-        ...prev.problemTypes,
-        [currentProblem.type]: {
-          correct: (prev.problemTypes[currentProblem.type]?.correct || 0) + (correct ? 1 : 0),
-          total: (prev.problemTypes[currentProblem.type]?.total || 0) + 1
-        }
-      }
-    }));
-
     if (correct) {
-      setScore(s => s + level * 10);
-      setMessage('Correct! Move to the target.');
-      setCurrentProblem(generateMathProblem(level));
+      handleCorrectAnswer(responseTime);
+      setMessage(`Correct! (${(responseTime / 1000).toFixed(1)}s) Move to the target.`);
     } else {
-      setMessage('Wrong answer, try again!');
+      handleWrongAnswer(responseTime);
+      setMessage(`Wrong answer! (${(responseTime / 1000).toFixed(1)}s) Try again!`);
     }
+
     setUserAnswer('');
-  };
+    setCurrentProblem(generateProblem(level));
+    setStartTime(Date.now());
+  }, [currentProblem, userAnswer, startTime, level, gameSession]);
 
   const handleMove = (direction: 'up' | 'down' | 'left' | 'right') => {
     setPlayerPos(prev => {
@@ -83,10 +185,7 @@ export const Game: React.FC = () => {
     if (playerPos.x === targetPos.x && playerPos.y === targetPos.y) {
       setLevel(l => l + 1);
       setPlayerPos({ x: 0, y: 0 });
-      setTargetPos({ 
-        x: gridSize - 1, 
-        y: gridSize - 1 
-      });
+      setTargetPos({ x: gridSize - 1, y: gridSize - 1 });
       setMessage('');
     }
   }, [playerPos, targetPos, gridSize]);
@@ -113,27 +212,17 @@ export const Game: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  const handleGameOver = useCallback(() => {
-    setGameOver(true);
-    const finalStats: GameStats = {
-      ...gameStats,
-      level,
-      score
-    };
-    navigate('/dashboard', { state: { gameStats: finalStats } });
-  }, [gameStats, level, score, navigate]);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="text-2xl font-bold">Level: {level}</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">Level {level}</h2>
               <p className="text-lg">Score: {score}</p>
             </div>
             <button
-              onClick={handleGameOver}
+              onClick={handleQuit}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
             >
               End Game
@@ -180,7 +269,7 @@ export const Game: React.FC = () => {
 
               <div className="mb-6">
                 <div className="text-center mb-4">
-                  <h3 className="text-xl font-bold">{currentProblem?.question}</h3>
+                  <h3 className="text-xl font-bold">{currentProblem?.expression}</h3>
                   {message && (
                     <p className={message.includes('Wrong') ? 'text-red-600' : 'text-green-600'}>
                       {message}
@@ -236,10 +325,10 @@ export const Game: React.FC = () => {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <CognitiveChat gameStats={gameStats} />
+            {/* Cognitive Chat */}
           </div>
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <AIChat gameStats={gameStats} />
+            {/* AI Chat */}
           </div>
         </div>
       </div>

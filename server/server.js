@@ -4,9 +4,27 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const { saveGameStats, getAllStats, getUserStats } = require('./statsStorage');
 
 const app = express();
-app.use(cors());
+
+// Configuration CORS détaillée
+app.use(cors({
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Add Content Security Policy headers for development
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self' http://localhost:* data:; font-src * data: 'unsafe-inline'; style-src * 'unsafe-inline'; img-src * data: 'unsafe-inline'"
+  );
+  next();
+});
+
 app.use(express.json());
 
 const DATA_DIR = path.join(__dirname, 'data');
@@ -112,23 +130,70 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Routes des statistiques
-app.post('/api/stats', async (req, res) => {
-  try {
+// Endpoint pour sauvegarder les stats d'un utilisateur
+app.post('/api/stats/:userId', (req, res) => {
+    const { userId } = req.params;
     const stats = req.body;
-    const id = uuidv4();
-    const timestamp = new Date().toISOString();
-    
-    const statLine = `${id},${stats.userId},${stats.pseudo},${timestamp},${stats.level},${stats.score},${stats.accuracy},${stats.avgResponseTime}\n`;
-    await fs.appendFile(STATS_FILE, statLine);
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Erreur lors de la sauvegarde des stats:', error);
-    res.status(500).json({ error: 'Erreur lors de la sauvegarde des stats' });
-  }
+    const success = saveGameStats(stats, userId);
+    if (success) {
+        res.json({ message: 'Statistiques sauvegardées avec succès' });
+    } else {
+        res.status(500).json({ error: 'Erreur lors de la sauvegarde des statistiques' });
+    }
 });
 
+// Endpoint pour récupérer les stats d'un utilisateur spécifique
+app.get('/api/stats/:userId', (req, res) => {
+    const { userId } = req.params;
+    const stats = getUserStats(userId);
+    res.json(stats);
+});
+
+// Endpoint pour récupérer toutes les stats (admin seulement)
+app.get('/api/stats', (req, res) => {
+    const stats = getAllStats();
+    res.json(stats);
+});
+
+// Endpoint pour charger les stats
+app.get('/api/stats/load', (req, res) => {
+    try {
+        const stats = getAllStats();
+        res.json(stats || {
+            level: 1,
+            score: 0,
+            totalAttempts: 0,
+            correctAnswers: 0,
+            totalResponseTime: 0,
+            averageResponseTime: 0,
+            problemTypes: {
+                addition: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
+                subtraction: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
+                multiplication: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
+                division: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
+                puissance: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
+                algebre: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading stats:', error);
+        res.status(500).json({ error: 'Error loading stats' });
+    }
+});
+
+// Endpoint pour sauvegarder les stats
+app.post('/api/stats/save', (req, res) => {
+    try {
+        const stats = req.body;
+        saveGameStats(stats);
+        res.json({ message: 'Stats saved successfully' });
+    } catch (error) {
+        console.error('Error saving stats:', error);
+        res.status(500).json({ error: 'Error saving stats' });
+    }
+});
+
+// Routes des statistiques
 app.get('/api/stats/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -198,7 +263,22 @@ app.get('/api/stats/summary/:userId', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+// Dashboard endpoint
+app.get('/dashboard', async (req, res) => {
+  try {
+    const stats = getAllStats();
+    res.json({
+      stats,
+      message: 'Dashboard data loaded successfully'
+    });
+  } catch (error) {
+    console.error('Error loading dashboard:', error);
+    res.status(500).json({ error: 'Error loading dashboard data' });
+  }
+});
+
+// Démarrage du serveur
+const PORT = 3002;
 app.listen(PORT, () => {
-  console.log(`Serveur démarré sur le port ${PORT}`);
+    console.log(`Serveur démarré sur http://localhost:${PORT}`);
 });

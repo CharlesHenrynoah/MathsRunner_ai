@@ -18,18 +18,38 @@ interface GameHistoryEntry {
 }
 
 class StatsService {
-  private readonly STORAGE_KEY = 'mathrunner_game_history';
+  private readonly API_URL = 'http://localhost:3002/api';
 
-  saveGameStats(stats: GameStats): void {
-    const history = this.getGameHistory();
-    const entry = this.createHistoryEntry(stats);
-    history.push(entry);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(history));
+  async saveGameStats(stats: GameStats, userId: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.API_URL}/stats/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(stats),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde des statistiques');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des statistiques:', error);
+    }
   }
 
-  getGameHistory(): GameHistoryEntry[] {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+  async getGameHistory(userId: string): Promise<GameHistoryEntry[]> {
+    try {
+      const response = await fetch(`${this.API_URL}/stats/${userId}`);
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des statistiques');
+      }
+      const stats = await response.json();
+      return stats.map(this.createHistoryEntry);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      return [];
+    }
   }
 
   private createHistoryEntry(stats: GameStats): GameHistoryEntry {
@@ -106,15 +126,15 @@ class StatsService {
     return `${headers.join(',')}\n${data.join(',')}`;
   }
 
-  getPerformanceSummary(stats: GameStats): {
+  async getPerformanceSummary(stats: GameStats, userId: string): Promise<{
     bestScore: number;
     averageScore: number;
     totalGames: number;
     bestLevel: number;
     bestAccuracy: number;
     bestResponseTime: number;
-  } {
-    const history = this.getGameHistory();
+  }> {
+    const history = await this.getGameHistory(userId);
     
     if (history.length === 0) {
       return {

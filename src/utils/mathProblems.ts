@@ -1,7 +1,10 @@
-interface MathProblem {
+import { ProblemType } from '../types/game';
+
+export interface MathProblem {
   question: string;
+  expression: string;
   answer: number;
-  type: string;
+  type: ProblemType;
 }
 
 export const generateMathProblem = (level: number): MathProblem => {
@@ -16,14 +19,16 @@ export const generateMathProblem = (level: number): MathProblem => {
       num2 = Math.floor(Math.random() * (10 * level)) + 1;
       return {
         question: `${num1} + ${num2} = ?`,
+        expression: `${num1} + ${num2}`,
         answer: num1 + num2,
         type: 'addition'
       };
     case '-':
       num1 = Math.floor(Math.random() * (10 * level)) + 1;
-      num2 = Math.floor(Math.random() * num1) + 1; // Ensure positive result
+      num2 = Math.floor(Math.random() * num1) + 1;
       return {
         question: `${num1} - ${num2} = ?`,
+        expression: `${num1} - ${num2}`,
         answer: num1 - num2,
         type: 'subtraction'
       };
@@ -32,14 +37,11 @@ export const generateMathProblem = (level: number): MathProblem => {
       num2 = Math.floor(Math.random() * (5 * level)) + 1;
       return {
         question: `${num1} × ${num2} = ?`,
+        expression: `${num1} × ${num2}`,
         answer: num1 * num2,
         type: 'multiplication'
       };
     default:
-      return {
-        question: '1 + 1 = ?',
-        answer: 2,
-        type: 'addition'
-      };
+      throw new Error('Invalid operation');
   }
 };
