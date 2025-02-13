@@ -1,0 +1,21 @@
+{
+    "performance": {
+      "global_success_rate": {
+        "prompt": "Le joueur a un taux de réussite global de {success_rate}%. Analyse cette donnée et donne-lui un retour détaillé.",
+        "success_rate": 85,
+        "last_tested": "2025-02-12",
+        "usage_count": 50,
+        "avg_score": 78.5
+      }
+    },
+    "improvement": {
+      "reduce_response_time": {
+        "prompt": "Le joueur a un temps moyen de réponse de {average_response_time} secondes. Propose une stratégie pour l’améliorer.",
+        "success_rate": 92,
+        "last_tested": "2025-02-12",
+        "usage_count": 34,
+        "avg_score": 80.2
+      }
+    }
+  }
+  

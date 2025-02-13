@@ -4,31 +4,9 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const path = require('path');
 const bcrypt = require('bcryptjs');
-const { saveGameStats, getAllStats, getUserStats } = require('./statsStorage');
-const http = require('http');
-const WebSocket = require('ws');
 
 const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
-// Configuration CORS détaillée
-app.use(cors({
-  origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-
-// Add Content Security Policy headers for development
-app.use((req, res, next) => {
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self' http://localhost:* data:; font-src * data: 'unsafe-inline'; style-src * 'unsafe-inline'; img-src * data: 'unsafe-inline'"
-  );
-  next();
-});
-
+app.use(cors());
 app.use(express.json());
 
 const DATA_DIR = path.join(__dirname, 'data');
@@ -63,23 +41,6 @@ async function ensureFiles() {
   await ensureDataDir();
   await ensureFiles();
 })();
-
-// WebSocket connection
-wss.on('connection', (ws) => {
-  console.log('Client connected');
-  ws.on('close', () => {
-    console.log('Client disconnected');
-  });
-});
-
-// Broadcast function
-function broadcast(data) {
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
-  });
-}
 
 // Routes d'authentification
 app.post('/api/auth/register', async (req, res) => {
@@ -151,66 +112,23 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Endpoint pour sauvegarder les stats d'un utilisateur
-app.post('/api/stats/:userId', (req, res) => {
-    const { userId } = req.params;
-    const stats = getUserStats(userId);
-    res.json(stats);
-});
-
-// Endpoint pour récupérer les stats d'un utilisateur spécifique
-app.get('/api/stats/:userId', (req, res) => {
-    const { userId } = req.params;
-    const stats = getUserStats(userId);
-    res.json(stats);
-});
-
-// Endpoint pour récupérer toutes les stats (admin seulement)
-app.get('/api/stats', (req, res) => {
-    const stats = getAllStats();
-    res.json(stats);
-});
-
-// Endpoint pour charger les stats
-app.get('/api/stats/load', (req, res) => {
-    try {
-        const stats = getAllStats();
-        res.json(stats || {
-            level: 1,
-            score: 0,
-            totalAttempts: 0,
-            correctAnswers: 0,
-            totalResponseTime: 0,
-            averageResponseTime: 0,
-            problemTypes: {
-                addition: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
-                subtraction: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
-                multiplication: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
-                division: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
-                puissance: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 },
-                algebre: { operations: [], correct: 0, total: 0, totalTime: 0, averageTime: 0 }
-            }
-        });
-    } catch (error) {
-        console.error('Error loading stats:', error);
-        res.status(500).json({ error: 'Error loading stats' });
-    }
-});
-
-// Endpoint pour sauvegarder les stats
-app.post('/api/stats/save', (req, res) => {
-    try {
-        const stats = req.body;
-        saveGameStats(stats);
-        broadcast(stats);
-        res.json({ message: 'Stats saved successfully' });
-    } catch (error) {
-        console.error('Error saving stats:', error);
-        res.status(500).json({ error: 'Error saving stats' });
-    }
-});
-
 // Routes des statistiques
+app.post('/api/stats', async (req, res) => {
+  try {
+    const stats = req.body;
+    const id = uuidv4();
+    const timestamp = new Date().toISOString();
+    
+    const statLine = `${id},${stats.userId},${stats.pseudo},${timestamp},${stats.level},${stats.score},${stats.accuracy},${stats.avgResponseTime}\n`;
+    await fs.appendFile(STATS_FILE, statLine);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde des stats:', error);
+    res.status(500).json({ error: 'Erreur lors de la sauvegarde des stats' });
+  }
+});
+
 app.get('/api/stats/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -240,30 +158,47 @@ app.get('/api/stats/user/:userId', async (req, res) => {
 app.get('/api/stats/summary/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const stats = getUserStats(userId);
-    res.json(stats);
+    const statsData = await fs.readFile(STATS_FILE, 'utf-8');
+    const userStats = statsData.split('\n').slice(1)
+      .filter(line => line && line.split(',')[1] === userId)
+      .map(line => {
+        const [_, __, ___, ____, level, score, accuracy, avgResponseTime] = line.split(',');
+        return {
+          level: parseInt(level),
+          score: parseInt(score),
+          accuracy: parseFloat(accuracy),
+          avgResponseTime: parseFloat(avgResponseTime)
+        };
+      });
+
+    if (userStats.length === 0) {
+      return res.json({
+        bestScore: 0,
+        averageScore: 0,
+        totalGames: 0,
+        bestLevel: 0,
+        bestAccuracy: 0,
+        bestResponseTime: 0
+      });
+    }
+
+    const summary = {
+      bestScore: Math.max(...userStats.map(s => s.score)),
+      averageScore: userStats.reduce((acc, s) => acc + s.score, 0) / userStats.length,
+      totalGames: userStats.length,
+      bestLevel: Math.max(...userStats.map(s => s.level)),
+      bestAccuracy: Math.max(...userStats.map(s => s.accuracy)),
+      bestResponseTime: Math.min(...userStats.map(s => s.avgResponseTime))
+    };
+
+    res.json(summary);
   } catch (error) {
     console.error('Erreur lors de la récupération du résumé:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération du résumé' });
   }
 });
 
-// Dashboard endpoint
-app.get('/dashboard', async (req, res) => {
-  try {
-    const stats = getAllStats();
-    res.json({
-      stats,
-      message: 'Dashboard data loaded successfully'
-    });
-  } catch (error) {
-    console.error('Error loading dashboard:', error);
-    res.status(500).json({ error: 'Error loading dashboard data' });
-  }
-});
-
-// Démarrage du serveur
-const PORT = 3002;
-server.listen(PORT, () => {
-    console.log(`Serveur démarré sur http://localhost:${PORT}`);
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Serveur démarré sur le port ${PORT}`);
 });
