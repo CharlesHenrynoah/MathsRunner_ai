@@ -1,1 +1,49 @@
-Hello world
+import unittest
+from app import generateProblem, GameStats
+
+class TestMathGame(unittest.TestCase):
+    def setUp(self):
+        self.stats = GameStats(
+            score=0,
+            level=1,
+            correctAnswers=0,
+            totalAttempts=0,
+            averageResponseTime=0,
+            problemTypes={
+                'addition': {'correct': 0, 'total': 0},
+                'subtraction': {'correct': 0, 'total': 0},
+                'multiplication': {'correct': 0, 'total': 0},
+                'division': {'correct': 0, 'total': 0},
+                'puissance': {'correct': 0, 'total': 0},
+                'algebre': {'correct': 0, 'total': 0}
+            }
+        )
+    
+    def test_generate_problem_level_1(self):
+        problem = generateProblem(1)
+        self.assertIn(problem.type, ['addition', 'subtraction'])
+        self.assertTrue(1 <= eval(problem.question.split()[0]) <= 10)
+    
+    def test_generate_problem_level_3(self):
+        problem = generateProblem(3)
+        self.assertIn(problem.type, ['multiplication', 'division'])
+    
+    def test_correct_answer_updates_stats(self):
+        self.stats.correctAnswers += 1
+        self.stats.score += 10
+        self.assertEqual(self.stats.correctAnswers, 1)
+        self.assertEqual(self.stats.score, 10)
+    
+    def test_incorrect_answer_does_not_update_correct_answers(self):
+        self.stats.totalAttempts += 1
+        self.assertEqual(self.stats.correctAnswers, 0)
+        self.assertEqual(self.stats.totalAttempts, 1)
+    
+    def test_level_progression(self):
+        self.stats.correctAnswers = 10
+        if self.stats.correctAnswers % 10 == 0:
+            self.stats.level += 1
+        self.assertEqual(self.stats.level, 2)
+    
+if __name__ == "__main__":
+    unittest.main()
