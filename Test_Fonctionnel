@@ -1,0 +1,93 @@
+const { Builder, By, until } = require('selenium-webdriver');
+
+describe('Test de chargement du site', () => {
+  let driver;
+
+  beforeAll(async () => {
+    driver = await new Builder().forBrowser('chrome').build();
+    await driver.get('http://localhost:3000'); // Remplace par l'URL locale
+  });
+
+  afterAll(async () => {
+    await driver.quit();
+  });
+
+  test('Le site doit afficher le titre du jeu', async () => {
+    const title = await driver.findElement(By.css('h1')).getText();
+    expect(title).toContain('Math Runner');
+  });
+});
+
+
+test('Navigation vers le dashboard et retour', async () => {
+  // Aller sur le dashboard
+  await driver.findElement(By.css('button.bg-blue-600')).click();
+  await driver.wait(until.urlContains('/dashboard'), 5000);
+
+  // Vérifier qu'on est bien sur le dashboard
+  const dashboardTitle = await driver.findElement(By.css('h1')).getText();
+  expect(dashboardTitle).toContain('Statistiques');
+
+  // Retourner au jeu
+  await driver.findElement(By.css('button.bg-purple-600')).click();
+  await driver.wait(until.urlContains('/'), 5000);
+
+  // Vérifier qu'on est revenu sur la page du jeu
+  const gameTitle = await driver.findElement(By.css('h1')).getText();
+  expect(gameTitle).toContain('Math Runner');
+});
+
+test('Connexion et déconnexion', async () => {
+  await driver.get('http://localhost:3000/login');
+
+  // Entrer les identifiants
+  await driver.findElement(By.name('username')).sendKeys('test_user');
+  await driver.findElement(By.name('password')).sendKeys('password123');
+  await driver.findElement(By.css('button[type="submit"]')).click();
+
+  // Vérifier la connexion réussie
+  await driver.wait(until.urlContains('/'), 5000);
+  const welcomeMessage = await driver.findElement(By.css('h1')).getText();
+  expect(welcomeMessage).toContain('Math Runner');
+
+  // Déconnexion
+  await driver.findElement(By.css('button.bg-red-100')).click();
+  await driver.wait(until.urlContains('/login'), 5000);
+});
+
+test('Génération et soumission d’un problème mathématique', async () => {
+  await driver.get('http://localhost:3000');
+
+  // Récupérer le problème généré
+  const problemText = await driver.findElement(By.css('h3')).getText();
+  console.log('Problème généré:', problemText);
+
+  // Extraire les nombres et l'opération
+  const match = problemText.match(/(\d+)\s*([+\-×÷])\s*(\d+)/);
+  let correctAnswer;
+  if (match) {
+    const num1 = parseInt(match[1]);
+    const num2 = parseInt(match[3]);
+    switch (match[2]) {
+      case '+': correctAnswer = num1 + num2; break;
+      case '-': correctAnswer = num1 - num2; break;
+      case '×': correctAnswer = num1 * num2; break;
+      case '÷': correctAnswer = num1 / num2; break;
+    }
+  }
+
+  // Entrer la réponse
+  const inputField = await driver.findElement(By.css('input[type="number"]'));
+  await inputField.sendKeys(correctAnswer.toString());
+
+  // Soumettre la réponse
+  await driver.findElement(By.css('button[type="submit"]')).click();
+
+  // Vérifier le message de feedback
+  const feedbackMessage = await driver.wait(
+    until.elementLocated(By.css('.fixed.top-4')),
+    5000
+  ).getText();
+
+  expect(feedbackMessage).toContain('Correct');
+});
