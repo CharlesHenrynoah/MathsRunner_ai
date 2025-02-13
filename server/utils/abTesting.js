@@ -1,4 +1,8 @@
-const { queryMistral } = require('./llmService');
+const queryMistral = (prompt) => {
+    return new Promise((resolve) => {
+        resolve("Réponse simulée");
+    });
+};
 
 /**
  * Compare un ancien et un nouveau prompt via A/B Testing en demandant à Mistral d’évaluer la qualité des réponses.
