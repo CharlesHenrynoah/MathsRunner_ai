@@ -1,0 +1,198 @@
+{
+  "utilisateur": {
+    "id": "2",
+    "nomUtilisateur": "Yezzy",
+    "email": "yezzy@mail.com",
+    "date": "2025-02-14T05:11:48.831Z"
+  },
+  "donneesParDate": [
+    {
+      "date": "2025-02-14T05:11:48.831Z",
+      "statistiquesPersonnelles": {
+        "niveau": 1,
+        "scoreMoyen": 0,
+        "meilleurScore": 0,
+        "tempsReponseMoyen": 0
+      },
+      "statistiquesParType": [
+        {
+          "type": "Addition",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Soustraction",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Multiplication",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Division",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Puissance",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Algebre",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        }
+      ],
+      "dernierePartie": {
+        "score": 0,
+        "niveauAtteint": 1,
+        "questionsCorrectes": 0,
+        "questionsIncorrectes": 0,
+        "tempsMoyenReponse": 0,
+        "meilleurType": "Aucun"
+      },
+      "historiqueDesParties": []
+    },
+    {
+      "date": "2025-02-14T05:19:40.732Z",
+      "statistiquesPersonnelles": {
+        "niveau": 2,
+        "scoreMoyen": 80,
+        "meilleurScore": 80,
+        "tempsReponseMoyen": null
+      },
+      "statistiquesParType": [
+        {
+          "type": "Addition",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Soustraction",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Multiplication",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Division",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Puissance",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Algebre",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        }
+      ],
+      "dernierePartie": {
+        "score": 80,
+        "niveauAtteint": 2,
+        "questionsCorrectes": 0,
+        "questionsIncorrectes": 0,
+        "tempsMoyenReponse": null,
+        "meilleurType": "Aucun"
+      },
+      "historiqueDesParties": [
+        {
+          "date": "2025-02-14T05:19:40.732Z",
+          "typesProblemes": [],
+          "niveauMaxAtteint": 2,
+          "score": 80
+        }
+      ]
+    },
+    {
+      "date": "2025-02-14T05:21:37.312Z",
+      "statistiquesPersonnelles": {
+        "niveau": 2,
+        "scoreMoyen": 50,
+        "meilleurScore": 80,
+        "tempsReponseMoyen": null
+      },
+      "statistiquesParType": [
+        {
+          "type": "Addition",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Soustraction",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Multiplication",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Division",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Puissance",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        },
+        {
+          "type": "Algebre",
+          "correctes": 0,
+          "total": 0,
+          "precision": "0%"
+        }
+      ],
+      "dernierePartie": {
+        "score": 20,
+        "niveauAtteint": 2,
+        "questionsCorrectes": 0,
+        "questionsIncorrectes": 0,
+        "tempsMoyenReponse": null,
+        "meilleurType": "Aucun"
+      },
+      "historiqueDesParties": [
+        {
+          "date": "2025-02-14T05:19:40.732Z",
+          "typesProblemes": [],
+          "niveauMaxAtteint": 2,
+          "score": 80
+        },
+        {
+          "date": "2025-02-14T05:21:37.312Z",
+          "typesProblemes": [],
+          "niveauMaxAtteint": 2,
+          "score": 20
+        }
+      ]
+    }
+  ]
+}

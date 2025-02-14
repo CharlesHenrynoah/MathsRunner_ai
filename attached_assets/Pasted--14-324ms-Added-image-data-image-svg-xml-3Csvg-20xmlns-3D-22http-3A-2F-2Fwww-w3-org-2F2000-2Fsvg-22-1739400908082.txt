@@ -1,0 +1,47 @@
+#14 324ms Added image data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224px%22%20height%3D%2224px%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22rou
+#14 328ms Added image data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216px%22%20height%3D%2216px%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22rou
+#14 332ms Starting renderer for element at 0,0 with size 1094x691
+#14 332ms Canvas renderer initialized (1094x691) with scale 2
+#14 367ms Finished rendering
+#15 0ms Starting document clone with size 1094x691 scrolled to 0,0
+Error analyzing screen: 
+Error {}
+
+Failed to get screen analysis: 
+Error {}
+
+#15 301ms Document cloned, element located at 0,0 with size 1094x691 using computed rendering
+#15 301ms Starting DOM parsing
+#15 346ms Added image data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224px%22%20height%3D%2224px%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22rou
+#15 350ms Added image data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216px%22%20height%3D%2216px%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22rou
+#15 364ms Starting renderer for element at 0,0 with size 1094x691
+#15 365ms Canvas renderer initialized (1094x691) with scale 2
+#16 0ms Starting document clone with size 1094x691 scrolled to 0,0
+#15 787ms Finished rendering
+#17 0ms Starting document clone with size 1094x691 scrolled to 0,0
+Error analyzing screen: 
+Error {}
+
+Failed to get screen analysis: 
+Error {}
+
+#16 658ms Document cloned, element located at 0,0 with size 1094x691 using computed rendering
+#16 658ms Starting DOM parsing
+#16 675ms Added image data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224px%22%20height%3D%2224px%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22rou
+#16 679ms Added image data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216px%22%20height%3D%2216px%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22rou
+#16 682ms Starting renderer for element at 0,0 with size 1094x691
+#16 682ms Canvas renderer initialized (1094x691) with scale 2
+#16 711ms Finished rendering
+#18 0ms Starting document clone with size 1094x691 scrolled to 0,0
+#17 805ms Document cloned, element located at 0,0 with size 1094x691 using computed rendering
+#17 806ms Starting DOM parsing
+#17 823ms Added image data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224px%22%20height%3D%2224px%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22rou
+#17 826ms Added image data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216px%22%20height%3D%2216px%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22rou
+#17 829ms Starting renderer for element at 0,0 with size 1094x691
+#17 830ms Canvas renderer initialized (1094x691) with scale 2
+Error analyzing screen: 
+Error {}
+
+Failed to get screen analysis: 
+Error {}
+

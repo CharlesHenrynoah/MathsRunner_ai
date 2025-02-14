@@ -1,0 +1,23 @@
+Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn&#x27;t have a dependency array, or one of the dependencies changes on every render.
+    at Runner (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/src/components/Runner.tsx:19:26)
+    at div
+    at div
+    at GamePage (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/src/pages/game-page.tsx:33:20)
+    at ProtectedRoute (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/src/lib/protected-route.tsx:22:3)
+    at Switch (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f9051e1f:379:17)
+    at Router
+    at AuthProvider (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at QueryClientProvider (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=f9051e1f:2805:3)
+    at App
+Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn&#x27;t have a dependency array, or one of the dependencies changes on every render.
+    at Runner (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/src/components/Runner.tsx:19:26)
+    at div
+    at div
+    at GamePage (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/src/pages/game-page.tsx:33:20)
+    at ProtectedRoute (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/src/lib/protected-route.tsx:22:3)
+    at Switch (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f9051e1f:379:17)
+    at Router
+    at AuthProvider (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at QueryClientProvider (https://85689f76-a5e2-4a55-aa89-3d1eb395d5fa-00-3ngl468f867rb.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=f9051e1f:2805:3)
+    at App
